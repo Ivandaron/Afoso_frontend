@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
 class SolidarityScreen extends ConsumerStatefulWidget {
   const SolidarityScreen({super.key});
 
@@ -71,7 +70,17 @@ class _SolidarityScreenState extends ConsumerState<SolidarityScreen>
                   () => const Center(
                     child: CircularProgressIndicator(color: AppColors.primary),
                   ),
-              error: (_, __) => _NoActiveFund(),
+              error:
+                  (error, stack) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Erreur de chargement de la cagnotte active: $error',
+                        style: GoogleFonts.dmSans(color: AppColors.danger),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
               data:
                   (fund) =>
                       fund == null
@@ -424,11 +433,31 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
         );
     final s = ref.read(contributeProvider);
     if (mounted && s.status == ContributeStatus.success) {
-      _show('Contribution initiée ! Confirmez sur votre téléphone.');
-      ref.invalidate(activeFundProvider);
+      _showContributionConfirmSheet(s.contribution!);
+      _show('🎉 Félicitations! Merci pour votre contribution!', isError: false);
     } else if (mounted && s.status == ContributeStatus.error) {
       _show(s.error ?? 'Erreur', isError: true);
     }
+  }
+
+  void _showContributionConfirmSheet(SolidarityContribution contribution) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (_) => _PaymentConfirmSheet(
+            contribution: contribution,
+            fund: widget.fund,
+            onClose: () {
+              Navigator.pop(context);
+              ref.read(contributeProvider.notifier).reset();
+              // Rafraîchir les données de la cagnotte après confirmation
+              ref.invalidate(activeFundProvider);
+              ref.invalidate(allFundsProvider);
+            },
+          ),
+    );
   }
 
   void _show(String msg, {bool isError = false}) {
@@ -447,44 +476,6 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
   Widget build(BuildContext context) {
     final state = ref.watch(contributeProvider);
     final isLoading = state.status == ContributeStatus.loading;
-    final hasContributed = state.status == ContributeStatus.success;
-
-    if (hasContributed) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.successLight,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 48,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Contribution envoyée !',
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.success,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Confirmez le paiement sur votre téléphone.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -566,9 +557,11 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
           const SizedBox(height: 20),
           AfosoButton(
             label:
-                'Contribuer ${widget.fund.contributionAmount.toStringAsFixed(0)} FCFA',
+                widget.fund.hasContributed == true
+                    ? 'Contribution effectuée ✓'
+                    : 'Contribuer ${widget.fund.contributionAmount.toStringAsFixed(0)} FCFA',
             isLoading: isLoading,
-            onPressed: _contribute,
+            onPressed: widget.fund.hasContributed == true ? null : _contribute,
             icon: const Icon(Icons.volunteer_activism_outlined, size: 18),
           ),
         ],
@@ -577,9 +570,11 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
   }
 }
 
-class _NoActiveFund extends StatelessWidget {
+class _NoActiveFund extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allFundsAsync = ref.watch(allFundsProvider);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -599,6 +594,28 @@ class _NoActiveFund extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),
+            ),
+            const SizedBox(height: 10),
+            allFundsAsync.when(
+              loading: () => const CircularProgressIndicator(),
+              error:
+                  (error, stack) => Text(
+                    'Erreur historique: $error',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.danger,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+              data:
+                  (funds) => Text(
+                    'Cagnottes totales: ${funds.length}\nActives: ${funds.where((f) => f.isActive).length}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
             ),
             const SizedBox(height: 10),
             Text(
@@ -705,6 +722,145 @@ class _FundHistoryTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+class _PaymentConfirmSheet extends StatefulWidget {
+  final SolidarityContribution contribution;
+  final SolidarityFund fund;
+  final VoidCallback onClose;
+
+  const _PaymentConfirmSheet({
+    required this.contribution,
+    required this.fund,
+    required this.onClose,
+  });
+
+  @override
+  State<_PaymentConfirmSheet> createState() => _PaymentConfirmSheetState();
+}
+
+class _PaymentConfirmSheetState extends State<_PaymentConfirmSheet> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(36),
+            ),
+            child: const Icon(
+              Icons.phone_android_rounded,
+              color: AppColors.primary,
+              size: 36,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Confirmez sur votre téléphone',
+            style: GoogleFonts.dmSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Un message de confirmation a été envoyé à\n${widget.contribution.paymentPhone}',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Détails transaction
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                _Row(
+                  'Montant',
+                  '${widget.contribution.amount.toStringAsFixed(0)} FCFA',
+                ),
+                const Divider(height: 20),
+                _Row(
+                  'Référence',
+                  widget.contribution.transactionReference ?? 'N/A',
+                ),
+                const Divider(height: 20),
+                _Row('Méthode', widget.contribution.paymentMethod),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: widget.onClose,
+            child: const Text('Compris, je vais confirmer'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Row(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

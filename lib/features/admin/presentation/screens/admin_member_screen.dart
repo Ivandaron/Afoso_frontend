@@ -4,6 +4,7 @@ import 'package:afoso1/core/constants/app_colors.dart';
 import 'package:afoso1/core/widgets/animations.dart';
 import 'package:afoso1/features/admin/data/models/admin_model.dart';
 import 'package:afoso1/features/admin/presentation/providers/admin_provider.dart';
+import 'package:afoso1/features/admin/presentation/screens/member_contribution_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -489,6 +490,33 @@ class _MemberCardState extends State<_MemberCard> {
                       valueColor: AppColors.primary,
                     ),
                   ],
+                  const SizedBox(height: 16),
+
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => MemberContributionHistoryScreen(
+                                memberId: m.id,
+                                memberName: m.fullName,
+                              ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.visibility_outlined, size: 16),
+                    label: const Text('Voir le détail'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 16),
 
                   // Toggle actif / inactif

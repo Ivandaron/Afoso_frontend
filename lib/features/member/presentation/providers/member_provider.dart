@@ -1,6 +1,9 @@
 import 'package:afoso1/features/member/data/member_repository.dart';
 import 'package:afoso1/features/member/data/models/deposit.dart';
 import 'package:afoso1/features/member/data/models/solidarity.dart';
+import 'package:afoso1/features/member/data/models/alert.dart';
+import 'package:afoso1/features/auth/presentation/providers/provider.dart';
+import 'package:afoso1/core/storage/secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final memberRepositoryProvider = Provider<MemberRepository>(
@@ -21,6 +24,74 @@ final myDepositsProvider = FutureProvider.autoDispose<List<Deposit>>((
   return ref.read(memberRepositoryProvider).getMyDeposits();
 });
 
+// ── DEPOSIT FORM STATE (pour paiement unifié) ────────────────────────────────
+enum DepositFormStatus { idle, loading, success, error }
+
+class DepositFormState {
+  final DepositFormStatus status;
+  final MultipleDepositTransaction? transaction;
+  final String? error;
+
+  const DepositFormState({
+    this.status = DepositFormStatus.idle,
+    this.transaction,
+    this.error,
+  });
+
+  DepositFormState copyWith({
+    DepositFormStatus? status,
+    MultipleDepositTransaction? transaction,
+    String? error,
+  }) => DepositFormState(
+    status: status ?? this.status,
+    transaction: transaction ?? this.transaction,
+    error: error,
+  );
+}
+
+class DepositFormNotifier extends StateNotifier<DepositFormState> {
+  final MemberRepository _repo;
+  DepositFormNotifier(this._repo) : super(const DepositFormState());
+
+  Future<void> initiateDeposit(UnifiedDepositRequest req) async {
+    state = state.copyWith(status: DepositFormStatus.loading, error: null);
+    try {
+      final tx = await _repo.initiateUnifiedDeposit(req);
+      state = state.copyWith(
+        status: DepositFormStatus.success,
+        transaction: tx,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        status: DepositFormStatus.error,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  void reset() => state = const DepositFormState();
+}
+
+final depositFormProvider = StateNotifierProvider.autoDispose<DepositFormNotifier, DepositFormState>((ref) {
+  return DepositFormNotifier(ref.read(memberRepositoryProvider));
+});
+
+// Provider pour les mois à payer (helper)
+final monthsToPayProvider = Provider<List<String>>((ref) {
+  final now = DateTime.now();
+  final months = <String>[];
+  for (int i = 0; i < 12; i++) {
+    final date = DateTime(now.year, now.month + i);
+    months.add('${_monthNames[date.month]} ${date.year}');
+  }
+  return months;
+});
+
+const _monthNames = [
+  '', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+];
+
 // ── ACTIVE SOLIDARITY FUND ────────────────────────────────────────────────────
 final activeFundProvider = FutureProvider.autoDispose<SolidarityFund?>((
   ref,
@@ -39,61 +110,6 @@ final allFundsProvider = FutureProvider.autoDispose<List<SolidarityFund>>((
 final mySolidarityHistoryProvider =
     FutureProvider.autoDispose<List<SolidarityFund>>((ref) async {
       return ref.read(memberRepositoryProvider).getMySolidarityHistory();
-    });
-
-// ── DEPOSIT FORM STATE ────────────────────────────────────────────────────────
-enum DepositFormStatus { idle, loading, success, error }
-
-class DepositFormState {
-  final DepositFormStatus status;
-  final DepositTransaction? transaction;
-  final String? error;
-
-  const DepositFormState({
-    this.status = DepositFormStatus.idle,
-    this.transaction,
-    this.error,
-  });
-
-  DepositFormState copyWith({
-    DepositFormStatus? status,
-    DepositTransaction? transaction,
-    String? error,
-  }) => DepositFormState(
-    status: status ?? this.status,
-    transaction: transaction ?? this.transaction,
-    error: error,
-  );
-}
-
-class DepositFormNotifier extends StateNotifier<DepositFormState> {
-  final MemberRepository _repo;
-  DepositFormNotifier(this._repo) : super(const DepositFormState());
-
-  Future<void> initiateDeposit(InitiateDepositRequest req) async {
-    state = state.copyWith(status: DepositFormStatus.loading, error: null);
-    try {
-      final tx = await _repo.initiateDeposit(req);
-      state = state.copyWith(
-        status: DepositFormStatus.success,
-        transaction: tx,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        status: DepositFormStatus.error,
-        error: e.toString().replaceAll('Exception: ', ''),
-      );
-    }
-  }
-
-  void reset() => state = const DepositFormState();
-}
-
-final depositFormProvider =
-    StateNotifierProvider.autoDispose<DepositFormNotifier, DepositFormState>((
-      ref,
-    ) {
-      return DepositFormNotifier(ref.read(memberRepositoryProvider));
     });
 
 // ── SOLIDARITY CONTRIBUTE STATE ───────────────────────────────────────────────
@@ -151,6 +167,17 @@ final contributeProvider =
       return ContributeNotifier(ref.read(memberRepositoryProvider));
     });
 
+// ── MEMBER UNREAD ALERTS ──────────────────────────────────────────────────────
+final memberUnreadAlertsProvider =
+    FutureProvider.autoDispose<List<MemberAlert>>((ref) async {
+      try {
+        // Get current user's ID from secure storage
+        final userId = await SecureStorageService.getUserId();
+        if (userId == null || userId.isEmpty) return [];
 
-
-
+        final memberId = int.parse(userId);
+        return ref.read(memberRepositoryProvider).getUnreadAlerts(memberId);
+      } catch (e) {
+        return [];
+      }
+    });

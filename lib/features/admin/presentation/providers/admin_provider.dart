@@ -1,6 +1,8 @@
+import 'package:afoso1/core/storage/secure_storage.dart';
 import 'package:afoso1/features/admin/data/admin_repository.dart';
 import 'package:afoso1/features/admin/data/models/admin_model.dart';
 import 'package:afoso1/features/member/data/models/solidarity.dart';
+import 'package:afoso1/features/member/data/models/alert.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final adminRepositoryProvider = Provider<AdminRepository>(
@@ -113,6 +115,77 @@ final periodOverviewProvider = FutureProvider.autoDispose<PeriodOverview>((
         endDate: period.endDate,
       );
 });
+
+final adminAlertProvider = StateNotifierProvider<AdminAlertNotifier, String>(
+  (ref) => AdminAlertNotifier(ref.watch(adminRepositoryProvider)),
+);
+
+class AdminAlertNotifier extends StateNotifier<String> {
+  final AdminRepository _repo;
+  AdminAlertNotifier(this._repo) : super('') {
+    loadAlert();
+  }
+
+  Future<void> loadAlert() async {
+    final alert = await SecureStorageService.getAdminAlertMessage();
+    state = alert ?? '';
+  }
+
+  Future<void> setAlert(String message) async {
+    await SecureStorageService.saveAdminAlertMessage(message);
+    state = message;
+  }
+}
+
+// ── SEND MEMBER ALERTS ─────────────────────────────────────────────────────────
+enum SendAlertStatus { idle, loading, success, error }
+
+class SendAlertState {
+  final SendAlertStatus status;
+  final Map<String, dynamic>? result;
+  final String? error;
+
+  const SendAlertState({
+    this.status = SendAlertStatus.idle,
+    this.result,
+    this.error,
+  });
+
+  SendAlertState copyWith({
+    SendAlertStatus? status,
+    Map<String, dynamic>? result,
+    String? error,
+  }) => SendAlertState(
+    status: status ?? this.status,
+    result: result ?? this.result,
+    error: error,
+  );
+}
+
+class SendAlertNotifier extends StateNotifier<SendAlertState> {
+  final AdminRepository _repo;
+  SendAlertNotifier(this._repo) : super(const SendAlertState());
+
+  Future<void> sendAlert(SendAlertRequest request) async {
+    state = state.copyWith(status: SendAlertStatus.loading, error: null);
+    try {
+      final result = await _repo.sendMemberAlert(request);
+      state = state.copyWith(status: SendAlertStatus.success, result: result);
+    } catch (e) {
+      state = state.copyWith(
+        status: SendAlertStatus.error,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  void reset() => state = const SendAlertState();
+}
+
+final sendAlertProvider =
+    StateNotifierProvider.autoDispose<SendAlertNotifier, SendAlertState>((ref) {
+      return SendAlertNotifier(ref.read(adminRepositoryProvider));
+    });
 
 // ── MEMBERS SEARCH ────────────────────────────────────────────────────────────
 class MembersSearchState {
@@ -307,3 +380,57 @@ final createFundProvider =
       (ref) => CreateFundNotifier(ref.read(adminRepositoryProvider)),
     );
 
+// ── MEMBER CONTRIBUTION HISTORY ──────────────────────────────────────────────
+class MemberContributionHistoryState {
+  final MemberContributionHistory? history;
+  final bool isLoading;
+  final String? error;
+
+  const MemberContributionHistoryState({
+    this.history,
+    this.isLoading = false,
+    this.error,
+  });
+
+  MemberContributionHistoryState copyWith({
+    MemberContributionHistory? history,
+    bool? isLoading,
+    String? error,
+  }) => MemberContributionHistoryState(
+    history: history ?? this.history,
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+  );
+}
+
+class MemberContributionHistoryNotifier
+    extends StateNotifier<MemberContributionHistoryState> {
+  final AdminRepository _repo;
+
+  MemberContributionHistoryNotifier(this._repo)
+    : super(const MemberContributionHistoryState());
+
+  Future<void> load(int memberId) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final history = await _repo.getMemberContributionHistory(memberId);
+      state = state.copyWith(isLoading: false, history: history);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+}
+
+final memberContributionHistoryProvider = StateNotifierProvider.autoDispose
+    .family<
+      MemberContributionHistoryNotifier,
+      MemberContributionHistoryState,
+      int
+    >((ref, memberId) {
+      return MemberContributionHistoryNotifier(
+        ref.read(adminRepositoryProvider),
+      );
+    });

@@ -2,6 +2,7 @@ import 'package:afoso1/core/constants/app_colors.dart';
 import 'package:afoso1/core/storage/secure_storage.dart';
 import 'package:afoso1/core/widgets/animations.dart';
 import 'package:afoso1/features/auth/presentation/providers/provider.dart';
+import 'package:afoso1/features/admin/presentation/providers/admin_provider.dart';
 import 'package:afoso1/features/member/presentation/providers/deposit_list_tile.dart';
 import 'package:afoso1/features/member/presentation/providers/member_provider.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,7 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
     final summaryAsync = ref.watch(depositSummaryProvider);
     final depositsAsync = ref.watch(myDepositsProvider);
     final fundAsync = ref.watch(activeFundProvider);
+    final adminAlert = ref.watch(adminAlertProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -52,6 +54,7 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
           ref.invalidate(depositSummaryProvider);
           ref.invalidate(myDepositsProvider);
           ref.invalidate(activeFundProvider);
+          await ref.read(adminAlertProvider.notifier).loadAlert();
         },
         child: CustomScrollView(
           slivers: [
@@ -128,7 +131,42 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
                             FadeInUp(child: _SummaryCard(summary: summary)),
                   ),
                   const SizedBox(height: 20),
-
+                  // ── Message d’alerte admin ──────────────────────────────────────────────
+                  if (adminAlert.isNotEmpty)
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 100),
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.warningLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.warning.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: AppColors.warning,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                adminAlert,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // ── Cagnotte active ───────────────────────────────────────
                   fundAsync.when(
                     loading: () => const SizedBox.shrink(),

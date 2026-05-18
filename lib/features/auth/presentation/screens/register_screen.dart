@@ -3,10 +3,12 @@ import 'package:afoso1/core/utils/validators.dart';
 import 'package:afoso1/core/widgets/custom_button.dart';
 import 'package:afoso1/core/widgets/custom_text_field.dart';
 import 'package:afoso1/core/widgets/loading_overlay.dart';
+import 'package:afoso1/core/storage/secure_storage.dart';
 import 'package:afoso1/features/auth/data/models/PaymentStatusResponse.dart';
 import 'package:afoso1/features/auth/data/models/RegisterRequest.dart';
 import 'package:afoso1/features/auth/presentation/providers/register_state.dart';
 import 'package:afoso1/features/auth/presentation/screens/brandPanel.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -79,6 +81,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       setState(() => _birthDate = picked);
     }
   }
+
+  Future<void> _openPolicyDialog(String title, Future<String?> Function() loader) async {
+    final content = await loader();
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: SingleChildScrollView(
+          child: Text(
+            content?.isNotEmpty == true
+                ? content!
+                : 'Aucun texte disponible pour le moment.',
+            style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTerms() => _openPolicyDialog('Conditions générales', SecureStorageService.getAdminTerms);
+  void _showPolicy() => _openPolicyDialog('Politique de confidentialité', SecureStorageService.getAdminPolicy);
 
   void _onPasswordChanged(String value) {
     setState(() => _passwordStrength = passwordStrength(value));
@@ -790,6 +821,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
                         ),
+                        recognizer: TapGestureRecognizer()..onTap = _showTerms,
                       ),
                       const TextSpan(text: ' et la '),
                       TextSpan(
@@ -799,6 +831,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
                         ),
+                        recognizer: TapGestureRecognizer()..onTap = _showPolicy,
                       ),
                       const TextSpan(text: ' d\'AFOSO'),
                     ],

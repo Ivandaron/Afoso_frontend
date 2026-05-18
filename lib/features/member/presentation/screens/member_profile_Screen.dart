@@ -179,7 +179,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder:
-          (_) => AlertDialog(
+          (dialogContext) => AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -193,7 +193,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogContext, false),
                 child: const Text('Annuler'),
               ),
               ElevatedButton(
@@ -201,7 +201,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                   backgroundColor: AppColors.danger,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogContext, true),
                 child: const Text('Déconnecter'),
               ),
             ],

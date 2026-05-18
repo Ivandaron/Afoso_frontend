@@ -275,6 +275,221 @@ class AdminMember {
   bool get isActive => active && status == 'ACTIVE';
 }
 
+class MemberContributionHistory {
+  final int id;
+  final String fullName;
+  final String phone;
+  final String? email;
+  final String? matricule;
+  final String? city;
+  final String status;
+  final bool active;
+  final String? birthDate;
+  final String createdAt;
+  final double accountBalance;
+  final double totalDeposited;
+  final double totalContributed;
+  final int totalCompletedPayments;
+  final int totalPendingPayments;
+  final int totalPartialPayments;
+  final int totalLatePayments;
+  final List<MonthlyContribution> contributions;
+  final List<MonthlyDeposit> monthlyDeposits;
+  final List<MissingMonth> missingMonths;
+
+  MemberContributionHistory({
+    required this.id,
+    required this.fullName,
+    required this.phone,
+    this.email,
+    this.matricule,
+    this.city,
+    required this.status,
+    required this.active,
+    this.birthDate,
+    required this.createdAt,
+    required this.accountBalance,
+    required this.totalDeposited,
+    required this.totalContributed,
+    required this.totalCompletedPayments,
+    required this.totalPendingPayments,
+    required this.totalPartialPayments,
+    required this.totalLatePayments,
+    required this.contributions,
+    required this.monthlyDeposits,
+    required this.missingMonths,
+  });
+
+  factory MemberContributionHistory.fromJson(Map<String, dynamic> json) {
+    return MemberContributionHistory(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      fullName: json['fullName'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      email: json['email'] as String?,
+      matricule: json['matricule'] as String?,
+      city: json['city'] as String?,
+      status: json['status'] as String? ?? 'ACTIVE',
+      active: json['active'] as bool? ?? true,
+      birthDate: json['birthDate'] as String?,
+      createdAt: json['createdAt']?.toString() ?? '',
+      accountBalance: (json['accountBalance'] as num?)?.toDouble() ?? 0.0,
+      totalDeposited: (json['totalDeposited'] as num?)?.toDouble() ?? 0.0,
+      totalContributed: (json['totalContributed'] as num?)?.toDouble() ?? 0.0,
+      totalCompletedPayments:
+          (json['totalCompletedPayments'] as num?)?.toInt() ?? 0,
+      totalPendingPayments:
+          (json['totalPendingPayments'] as num?)?.toInt() ?? 0,
+      totalPartialPayments:
+          (json['totalPartialPayments'] as num?)?.toInt() ?? 0,
+      totalLatePayments: (json['totalLatePayments'] as num?)?.toInt() ?? 0,
+      contributions:
+          (json['contributions'] as List<dynamic>?)
+              ?.map(
+                (e) => MonthlyContribution.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
+      monthlyDeposits:
+          (json['monthlyDeposits'] as List<dynamic>?)
+              ?.map((e) => MonthlyDeposit.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      missingMonths:
+          (json['missingMonths'] as List<dynamic>?)
+              ?.map((e) => MissingMonth.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class MonthlyContribution {
+  final int id;
+  final int month;
+  final int year;
+  final String status;
+  final double amount;
+  final double paidAmount;
+  final int? daysLate;
+  final String createdAt;
+
+  MonthlyContribution({
+    required this.id,
+    required this.month,
+    required this.year,
+    required this.status,
+    required this.amount,
+    required this.paidAmount,
+    this.daysLate,
+    required this.createdAt,
+  });
+
+  factory MonthlyContribution.fromJson(Map<String, dynamic> json) {
+    return MonthlyContribution(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      month: (json['month'] as num?)?.toInt() ?? 0,
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      status: json['status'] as String? ?? 'UNKNOWN',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      daysLate: (json['daysLate'] as num?)?.toInt(),
+      createdAt: json['createdAt']?.toString() ?? '',
+    );
+  }
+
+  String get monthLabel {
+    final yearString = year.toString();
+    if (yearString.length >= 2) {
+      return '$month/${yearString.substring(yearString.length - 2)}';
+    }
+    return '$month/$yearString';
+  }
+
+  String get title => 'Cotisation $month/$year';
+  String get subtitle => '$status • payé ${paidAmount.toStringAsFixed(0)} FCFA';
+  String get amountLabel => '${paidAmount.toStringAsFixed(0)} FCFA';
+}
+
+class MonthlyDeposit extends MonthlyContribution {
+  MonthlyDeposit({
+    required int id,
+    required int month,
+    required int year,
+    required String status,
+    required double amount,
+    required double paidAmount,
+    int? daysLate,
+    required String createdAt,
+  }) : super(
+         id: id,
+         month: month,
+         year: year,
+         status: status,
+         amount: amount,
+         paidAmount: paidAmount,
+         daysLate: daysLate,
+         createdAt: createdAt,
+       );
+
+  factory MonthlyDeposit.fromJson(Map<String, dynamic> json) {
+    return MonthlyDeposit(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      month: (json['month'] as num?)?.toInt() ?? 0,
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      status: json['status'] as String? ?? 'UNKNOWN',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      daysLate: (json['daysLate'] as num?)?.toInt(),
+      createdAt: json['createdAt']?.toString() ?? '',
+    );
+  }
+}
+
+class MissingMonth {
+  final int year;
+  final int month;
+  final String monthName;
+
+  MissingMonth({
+    required this.year,
+    required this.month,
+    required this.monthName,
+  });
+
+  factory MissingMonth.fromJson(Map<String, dynamic> json) {
+    return MissingMonth(
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      month: (json['month'] as num?)?.toInt() ?? 0,
+      monthName:
+          json['monthName'] as String? ??
+          _monthName((json['month'] as num?)?.toInt() ?? 0),
+    );
+  }
+
+  String get formattedMonth =>
+      monthName.isNotEmpty ? '$monthName $year' : '$month/$year';
+
+  static String _monthName(int month) {
+    const names = [
+      '',
+      'Janvier',
+      'Février',
+      'Mars',
+      'Avril',
+      'Mai',
+      'Juin',
+      'Juillet',
+      'Août',
+      'Septembre',
+      'Octobre',
+      'Novembre',
+      'Décembre',
+    ];
+    if (month < 1 || month > 12) return '';
+    return names[month];
+  }
+}
+
 class CreateSolidarityFundRequest {
   final String description;
   final double amountPerMember;
@@ -301,9 +516,12 @@ class CreateSolidarityFundRequest {
   Map<String, dynamic> toJson() => {
     'description': _cleanText(description),
     'amountPerMember': amountPerMember,
-    'deadlineDate': '${deadlineDate.year}-${deadlineDate.month.toString().padLeft(2, '0')}-${deadlineDate.day.toString().padLeft(2, '0')}',
+    'deadlineDate':
+        '${deadlineDate.year}-${deadlineDate.month.toString().padLeft(2, '0')}-${deadlineDate.day.toString().padLeft(2, '0')}',
     if (beneficiaryId != null) 'beneficiaryId': beneficiaryId,
-    if (messageToMembers != null) 'messageToMembers': _cleanText(messageToMembers!),
-    if (disableNotifications != null) 'disableNotifications': disableNotifications,
+    if (messageToMembers != null)
+      'messageToMembers': _cleanText(messageToMembers!),
+    if (disableNotifications != null)
+      'disableNotifications': disableNotifications,
   };
 }

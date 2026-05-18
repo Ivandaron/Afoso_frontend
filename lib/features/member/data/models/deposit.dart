@@ -1,3 +1,4 @@
+// deposit.dart - Ajouter les nouveaux modèles
 class DepositSummary {
   final double totalSaved;
   final MonthStats currentMonth;
@@ -80,24 +81,82 @@ class Deposit {
       isCompleted || status == 'COMPLETED' || status == 'SUCCESS';
 }
 
-class InitiateDepositRequest {
-  final double amount;
+// 🔥 NOUVEAU: Request pour paiement unifié (1 mois ou plusieurs)
+class UnifiedDepositRequest {
+  final double amountPerMonth;
+  final int monthsCount;
+  final List<String> monthsToPay;
   final String paymentPhone;
   final String paymentMethod;
+  final bool isAdvancePayment;
 
-  InitiateDepositRequest({
-    required this.amount,
+  UnifiedDepositRequest({
+    required this.amountPerMonth,
+    required this.monthsCount,
+    required this.monthsToPay,
     required this.paymentPhone,
     required this.paymentMethod,
+    this.isAdvancePayment = false,
   });
 
   Map<String, dynamic> toJson() => {
-    'amount': amount,
+    'amountPerMonth': amountPerMonth,
+    'monthsCount': monthsCount,
+    'monthsToPay': monthsToPay,
     'paymentPhone': paymentPhone,
     'paymentMethod': paymentMethod,
+    'isAdvancePayment': isAdvancePayment,
   };
+  
+  double get totalAmount => amountPerMonth * monthsCount;
+  double get minimumRequired => 1000.0 * monthsCount;
+  bool get isTotalAmountValid => totalAmount >= minimumRequired;
+  bool get isSimpleDeposit => monthsCount == 1;
+  bool get isMultipleDeposit => monthsCount > 1;
 }
 
+// 🔥 NOUVEAU: Transaction pour paiement multiple
+class MultipleDepositTransaction {
+  final String transactionReference;
+  final double totalAmount;
+  final double amountPerMonth;
+  final int monthsCount;
+  final List<String> monthsToPay;
+  final String paymentPhone;
+  final String paymentMethod;
+  final String status;
+  final bool isAdvancePayment;
+
+  MultipleDepositTransaction({
+    required this.transactionReference,
+    required this.totalAmount,
+    required this.amountPerMonth,
+    required this.monthsCount,
+    required this.monthsToPay,
+    required this.paymentPhone,
+    required this.paymentMethod,
+    required this.status,
+    this.isAdvancePayment = false,
+  });
+
+  factory MultipleDepositTransaction.fromJson(Map<String, dynamic> json) {
+    return MultipleDepositTransaction(
+      transactionReference: json['transactionReference'] as String? ?? '',
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      amountPerMonth: (json['amountPerMonth'] as num?)?.toDouble() ?? 0.0,
+      monthsCount: json['monthsCount'] as int? ?? 0,
+      monthsToPay: (json['monthsToPay'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ?? [],
+      paymentPhone: json['paymentPhone'] as String? ?? '',
+      paymentMethod: json['paymentMethod'] as String? ?? '',
+      status: json['status'] as String? ?? 'PENDING',
+      isAdvancePayment: json['isAdvancePayment'] as bool? ?? false,
+    );
+  }
+}
+
+// Garder l'ancien pour compatibilité
 class DepositTransaction {
   final String transactionReference;
   final double amount;

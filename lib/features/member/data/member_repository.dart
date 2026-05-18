@@ -2,6 +2,7 @@ import 'package:afoso1/core/network/api_client.dart';
 import 'package:afoso1/core/network/api_responses.dart';
 import 'package:afoso1/features/member/data/models/deposit.dart';
 import 'package:afoso1/features/member/data/models/solidarity.dart';
+import 'package:afoso1/features/member/data/models/alert.dart';
 
 class MemberRepository {
   final ApiClient _api = ApiClient.instance;
@@ -35,8 +36,17 @@ class MemberRepository {
   }
 
   /// POST /api/me/deposits/initiate
-  Future<DepositTransaction> initiateDeposit(
-    InitiateDepositRequest request,
+  /// NOTE: legacy single-month `initiateDeposit` endpoint replaced by
+  /// `initiateUnifiedDeposit` which supports one or multiple months.
+  Future<MultipleDepositTransaction> initiateDeposit(
+    UnifiedDepositRequest request,
+  ) async {
+    return initiateUnifiedDeposit(request);
+  }
+
+   /// 🔥 NOUVEAU: Endpoint unifié pour les dépôts (1 mois ou plusieurs)
+  Future<MultipleDepositTransaction> initiateUnifiedDeposit(
+    UnifiedDepositRequest request,
   ) async {
     final response = await _api.post(
       '/api/me/deposits/initiate',
@@ -48,7 +58,7 @@ class MemberRepository {
       throw ApiException(message: json['message'] as String? ?? 'Erreur');
     }
     final data = json['data'] as Map<String, dynamic>;
-    return DepositTransaction.fromJson(data);
+    return MultipleDepositTransaction.fromJson(data);
   }
 
   // ── CAGNOTTES SOLIDAIRES ────────────────────────────────────────────────────
@@ -63,6 +73,8 @@ class MemberRepository {
       );
       return apiResp.data;
     } catch (e) {
+      // Log l'erreur pour le debugging
+      print('Erreur lors de la récupération de la cagnotte active: $e');
       return null; // Aucune cagnotte active
     }
   }
@@ -122,5 +134,41 @@ class MemberRepository {
       throw ApiException(message: apiResp.errorMessage);
     }
     return apiResp.data!;
+  }
+
+  // ── ALERTES ─────────────────────────────────────────────────────────────────
+
+  /// GET /api/members/{id}/alerts/unread
+  Future<List<MemberAlert>> getUnreadAlerts(int memberId) async {
+    final response = await _api.get(
+      '/api/members/$memberId/alerts/unread',
+    );
+    final json = response.data as Map<String, dynamic>;
+    final datalist = json['data'] as List<dynamic>? ?? [];
+    return datalist
+        .map((e) => MemberAlert.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// GET /api/members/{id}/alerts
+  Future<List<MemberAlert>> getMemberAlerts(int memberId) async {
+    final response = await _api.get(
+      '/api/members/$memberId/alerts',
+    );
+    final json = response.data as Map<String, dynamic>;
+    final dataList = json['data'] as List<dynamic>? ?? [];
+    return dataList
+        .map((e) => MemberAlert.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// PUT /api/alerts/{alertId}/read
+  Future<void> markAlertAsRead(int alertId) async {
+    await _api.put('/api/alerts/$alertId/read');
+  }
+
+  /// PUT /api/members/{id}/alerts/read-all
+  Future<void> markAllAlertsAsRead(int memberId) async {
+    await _api.put('/api/members/$memberId/alerts/read-all');
   }
 }

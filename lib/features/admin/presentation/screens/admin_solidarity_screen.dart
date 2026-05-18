@@ -192,7 +192,7 @@ class _CreateFundFormState extends ConsumerState<_CreateFundForm> {
     }
 
     final amount = double.tryParse(_amountCtrl.text);
-    if (amount == null || amount < 100) {
+    if (amount == null || amount < 3) {
       _showSnack('Montant invalide (minimum 100 FCFA)', isError: true);
       return;
     }

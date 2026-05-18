@@ -10,15 +10,20 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AdminShellScreen extends ConsumerStatefulWidget {
   final Widget child;
-  const AdminShellScreen({super.key, required this.child});
+  final String currentLocation;
+
+  const AdminShellScreen({
+    super.key,
+    required this.child,
+    required this.currentLocation,
+  });
 
   @override
   ConsumerState<AdminShellScreen> createState() => _AdminShellScreenState();
 }
 
 class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
-  int _index = 0;
-  String _adminName = 'Admin';
+  final String _adminName = 'Admin';
 
   static const _tabs = [
     _Tab(
@@ -49,44 +54,53 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
       activeIcon: Icons.volunteer_activism_rounded,
       path: '/admin/solidarity',
     ),
+    _Tab(
+      label: 'Paramètres',
+      shortLabel: 'Paramètres',
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings_rounded,
+      path: '/admin/settings',
+    ),
   ];
 
   @override
-  void initState() {
-    super.initState();
-    SecureStorageService.getUserName().then((n) {
-      if (mounted && n != null) setState(() => _adminName = n);
-    });
-  }
-
-  void _navigate(int i) {
-    if (i == _index) return;
-    setState(() => _index = i);
-    context.go(_tabs[i].path);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth >= 700;
+    final activeIndex = _tabs.indexWhere(
+      (tab) => widget.currentLocation.startsWith(tab.path),
+    );
+    final currentIndex = activeIndex >= 0 ? activeIndex : 0;
 
-    if (isWide) {
-      return Scaffold(
-        body: Row(
-          children: [
-            _buildSideRail(),
-            const VerticalDivider(width: 1, color: AppColors.border),
-            Expanded(child: widget.child),
-          ],
-        ),
-      );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 900) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Row(
+              children: [
+                _buildSideRail(currentIndex),
+                Expanded(child: widget.child),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: widget.child,
+          bottomNavigationBar: _buildBottomNav(currentIndex),
+        );
+      },
+    );
+  }
+
+  void _navigate(int index) {
+    if (context.mounted) {
+      context.go(_tabs[index].path);
     }
-
-    return Scaffold(body: widget.child, bottomNavigationBar: _buildBottomNav());
   }
 
   // ── SIDE RAIL (desktop/tablet) ─────────────────────────────────────────────
-  Widget _buildSideRail() {
+  Widget _buildSideRail(int activeIndex) {
     return Container(
       width: 230,
       color: AppColors.white,
@@ -142,7 +156,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           // Nav items
           ...List.generate(_tabs.length, (i) {
             final t = _tabs[i];
-            final active = i == _index;
+            final active = i == activeIndex;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
               child: InkWell(
@@ -247,9 +261,8 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                 IconButton(
                   onPressed: () async {
                     await ref.read(authProvider.notifier).logout();
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
+                    if (!mounted) return;
+                    context.go('/login');
                   },
                   icon: const Icon(
                     Icons.logout_rounded,
@@ -270,7 +283,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   }
 
   // ── BOTTOM NAV (mobile) ───────────────────────────────────────────────────
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(int activeIndex) {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.white,
@@ -289,7 +302,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           child: Row(
             children: List.generate(_tabs.length, (i) {
               final t = _tabs[i];
-              final active = i == _index;
+              final active = i == activeIndex;
               return Expanded(
                 child: InkWell(
                   onTap: () => _navigate(i),

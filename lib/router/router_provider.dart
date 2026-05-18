@@ -1,5 +1,6 @@
 import 'package:afoso1/features/admin/presentation/screens/adminDashboardScreen.dart';
 import 'package:afoso1/features/admin/presentation/screens/adminShellScreen.dart';
+import 'package:afoso1/features/admin/presentation/screens/admin_settings_screen.dart';
 import 'package:afoso1/features/admin/presentation/screens/admin_member_screen.dart';
 import 'package:afoso1/features/admin/presentation/screens/admin_solidarity_screen.dart';
 import 'package:afoso1/features/admin/presentation/screens/registration_screen.dart';
@@ -85,7 +86,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       ShellRoute(
-        builder: (_, __, child) => AdminShellScreen(child: child),
+        builder: (_, state, child) => AdminShellScreen(
+          child: child,
+          currentLocation: state.uri.toString(),
+        ),
         routes: [
           GoRoute(
             path: '/admin/dashboard',
@@ -102,6 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/admin/solidarity',
             builder: (_, __) => const AdminSolidarityScreen(),
+          ),
+          GoRoute(
+            path: '/admin/settings',
+            builder: (_, __) => const AdminSettingsScreen(),
           ),
         ],
       ),

@@ -30,17 +30,17 @@ class SolidarityFund {
   factory SolidarityFund.fromJson(Map<String, dynamic> json) {
     return SolidarityFund(
       id: (json['id'] as num?)?.toInt() ?? 0,
-      title: json['title'] as String? ?? '',
+      title: json['description'] as String? ?? '',
       description: json['description'] as String?,
       targetAmount: (json['targetAmount'] as num?)?.toDouble() ?? 0.0,
       contributionAmount:
-          (json['contributionAmount'] as num?)?.toDouble() ?? 0.0,
-      collectedAmount: (json['collectedAmount'] as num?)?.toDouble() ?? 0.0,
+          (json['amountPerMember'] as num?)?.toDouble() ?? 0.0,
+      collectedAmount: (json['totalCollected'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] as String? ?? 'ACTIVE',
       beneficiaryName: json['beneficiaryName'] as String?,
-      beneficiaryReason: json['beneficiaryReason'] as String?,
+      beneficiaryReason: json['messageToMembers'] as String?,
       createdAt: json['createdAt']?.toString() ?? '',
-      contributionCount: (json['contributionCount'] as num?)?.toInt() ?? 0,
+      contributionCount: (json['participantsCount'] as num?)?.toInt() ?? 0,
       hasContributed: json['hasContributed'] as bool?,
     );
   }

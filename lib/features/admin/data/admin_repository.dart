@@ -3,6 +3,7 @@ import 'package:afoso1/core/network/api_client.dart';
 import 'package:afoso1/core/network/api_responses.dart';
 import 'package:afoso1/features/admin/data/models/admin_model.dart';
 import 'package:afoso1/features/member/data/models/solidarity.dart';
+import 'package:afoso1/features/member/data/models/alert.dart';
 
 class AdminRepository {
   final ApiClient _api = ApiClient.instance;
@@ -180,5 +181,33 @@ class AdminRepository {
       '/api/solidarity-funds/$id/close',
       data: {'notes': notes ?? ''},
     );
+  }
+
+  /// GET /api/admin/members/{id}/contribution-history
+  Future<MemberContributionHistory> getMemberContributionHistory(int memberId) async {
+    final response = await _api.get('/api/admin/members/$memberId/contribution-history');
+    final apiResp = ApiResponse.fromJson(
+      response.data as Map<String, dynamic>,
+      (data) => MemberContributionHistory.fromJson(data as Map<String, dynamic>),
+    );
+    if (!apiResp.isSuccess || apiResp.data == null) {
+      throw ApiException(message: apiResp.errorMessage);
+    }
+    return apiResp.data!;
+  }
+
+  // ── ALERTES ────────────────────────────────────────────────────────────────
+
+  /// POST /api/admin/alerts/send
+  Future<Map<String, dynamic>> sendMemberAlert(
+    SendAlertRequest request,
+  ) async {
+    final response = await _api.post(
+      '/api/admin/alerts/send',
+      data: request.toJson(),
+    );
+    final json = response.data as Map<String, dynamic>;
+    final data = json['data'] as Map<String, dynamic>? ?? {};
+    return data;
   }
 }
