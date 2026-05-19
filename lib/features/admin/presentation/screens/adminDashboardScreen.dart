@@ -38,20 +38,21 @@ class AdminDashboardScreen extends ConsumerWidget {
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Déconnexion'),
-                  content: const Text('Voulez-vous vous déconnecter ?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Annuler'),
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text('Déconnexion'),
+                      content: const Text('Voulez-vous vous déconnecter ?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Annuler'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Se déconnecter'),
+                        ),
+                      ],
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Se déconnecter'),
-                    ),
-                  ],
-                ),
               );
 
               if (confirm == true) {
@@ -539,6 +540,255 @@ class _StatCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// dashboard_stats_enhanced.dart - À intégrer dans adminDashboardScreen.dart
+
+class _EnhancedStatsGrid extends StatelessWidget {
+  final dynamic stats;
+  final double previousPeriodTotal;
+
+  const _EnhancedStatsGrid({
+    required this.stats,
+    required this.previousPeriodTotal,
+  });
+
+  String _fmt(double v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}K';
+    return v.toStringAsFixed(0);
+  }
+
+  double _getVariation(double current, double previous) {
+    if (previous == 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalDeposits = stats.totalDeposits;
+    final variation = _getVariation(totalDeposits, previousPeriodTotal);
+    final isPositive = variation >= 0;
+
+    return Column(
+      children: [
+        // Carte principale - Épargne totale avec variation
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (isPositive ? AppColors.success : AppColors.danger)
+                          .withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isPositive ? Icons.trending_up : Icons.trending_down,
+                          size: 14,
+                          color:
+                              isPositive ? AppColors.success : AppColors.danger,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${variation.abs().toStringAsFixed(1)}%',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                isPositive
+                                    ? AppColors.success
+                                    : AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Épargne totale',
+                style: GoogleFonts.dmSans(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${_fmt(totalDeposits)} FCFA',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Grille des autres stats
+        Row(
+          children: [
+            _MiniStatCard(
+              icon: Icons.people_rounded,
+              label: 'Membres actifs',
+              value: '${stats.activeMembers}',
+              color: AppColors.success,
+              previousValue: stats.previousActiveMembers,
+            ),
+            const SizedBox(width: 10),
+            _MiniStatCard(
+              icon: Icons.how_to_reg_rounded,
+              label: 'Revenus inscriptions',
+              value: '${_fmt(stats.totalRegistrationFees)} FCFA',
+              color: const Color(0xFF7C3AED),
+              previousValue: stats.previousRegistrationFees,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _MiniStatCard(
+              icon: Icons.pending_actions_rounded,
+              label: 'En attente',
+              value: '${stats.pendingRegistrations}',
+              color:
+                  stats.pendingRegistrations > 0
+                      ? AppColors.warning
+                      : AppColors.success,
+              previousValue: stats.previousPendingRegistrations,
+            ),
+            const SizedBox(width: 10),
+            _MiniStatCard(
+              icon: Icons.error_outline_rounded,
+              label: 'Transactions échouées',
+              value: '${stats.failedTransactions}',
+              color:
+                  stats.failedTransactions > 0
+                      ? AppColors.danger
+                      : AppColors.success,
+              previousValue: stats.previousFailedTransactions,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniStatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final double? previousValue;
+
+  const _MiniStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    this.previousValue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: color),
+                ),
+                const Spacer(),
+                if (previousValue != null)
+                  _VariationBadge(current: value, previous: previousValue!),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VariationBadge extends StatelessWidget {
+  final String current;
+  final double previous;
+
+  const _VariationBadge({required this.current, required this.previous});
+
+  @override
+  Widget build(BuildContext context) {
+    // Simplifié - à adapter selon vos besoins
+    return const SizedBox.shrink();
   }
 }
 

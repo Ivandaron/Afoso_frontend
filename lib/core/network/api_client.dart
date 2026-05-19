@@ -113,9 +113,16 @@ class ApiClient {
   Future<Response> get(
     String path, {
     Map<String, dynamic>? queryParameters,
+    ResponseType? responseType,
   }) async {
     try {
-      return await _dio.get(path, queryParameters: queryParameters);
+      return await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        options: responseType != null
+            ? Options(responseType: responseType)
+            : null,
+      );
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
