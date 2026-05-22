@@ -3,6 +3,7 @@ import 'package:afoso1/features/admin/data/admin_repository.dart';
 import 'package:afoso1/features/admin/data/models/admin_model.dart';
 import 'package:afoso1/features/member/data/models/solidarity.dart';
 import 'package:afoso1/features/member/data/models/alert.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final adminRepositoryProvider = Provider<AdminRepository>(
@@ -27,6 +28,73 @@ final depositsSummaryProvider =
     FutureProvider.autoDispose<List<DepositsSummaryItem>>((ref) {
       return ref.read(adminRepositoryProvider).getMembersDepositsSummary();
     });
+
+
+
+// ── IMPORT EXCEL ──────────────────────────────────────────────────────────────
+enum ExcelImportStatus { idle, loading, success, error }
+
+class ExcelImportState {
+  final ExcelImportStatus status;
+  final ExcelImportResult? result;
+  final String? error;
+  final double progress;
+
+  const ExcelImportState({
+    this.status = ExcelImportStatus.idle,
+    this.result,
+    this.error,
+    this.progress = 0,
+  });
+
+  ExcelImportState copyWith({
+    ExcelImportStatus? status,
+    ExcelImportResult? result,
+    String? error,
+    double? progress,
+  }) => ExcelImportState(
+    status: status ?? this.status,
+    result: result ?? this.result,
+    error: error,
+    progress: progress ?? this.progress,
+  );
+}
+
+class ExcelImportNotifier extends StateNotifier<ExcelImportState> {
+  final AdminRepository _repo;
+  ExcelImportNotifier(this._repo) : super(const ExcelImportState());
+
+  Future<void> importFile(String filePath, String fileName) async {
+    state = state.copyWith(status: ExcelImportStatus.loading, progress: 0, error: null);
+    
+    try {
+      // Simuler la progression
+      for (int i = 0; i <= 100; i += 10) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        state = state.copyWith(progress: i / 100);
+      }
+      
+      final result = await _repo.importExcelFile(filePath, fileName);
+      
+      state = state.copyWith(
+        status: ExcelImportStatus.success,
+        result: result,
+        progress: 1,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        status: ExcelImportStatus.error,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  void reset() => state = const ExcelImportState();
+}
+
+final excelImportProvider = StateNotifierProvider.autoDispose<ExcelImportNotifier, ExcelImportState>((ref) {
+  return ExcelImportNotifier(ref.read(adminRepositoryProvider));
+});
 
 // ── RÉSUMÉ FINANCIER PAR PÉRIODE ─────────────────────────────────────────────
 // Sélecteur de période prédéfinie

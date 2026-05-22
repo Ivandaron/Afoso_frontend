@@ -1,5 +1,6 @@
 import 'package:afoso1/core/constants/app_colors.dart';
 import 'package:afoso1/core/storage/secure_storage.dart';
+import 'package:afoso1/core/network/api_client.dart';
 import 'package:afoso1/core/widgets/animations.dart';
 import 'package:afoso1/features/auth/presentation/providers/provider.dart';
 import 'package:afoso1/features/admin/presentation/providers/admin_provider.dart';
@@ -637,6 +638,92 @@ class _ErrorCard extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// Dans member_dashboard_screen.dart - Ajouter un indicateur
+class _SyncStatusWidget extends ConsumerStatefulWidget {
+  const _SyncStatusWidget({super.key});
+
+  @override
+  ConsumerState<_SyncStatusWidget> createState() => _SyncStatusWidgetState();
+}
+
+class _SyncStatusWidgetState extends ConsumerState<_SyncStatusWidget> {
+  bool _isSyncing = false;
+  bool _hasSynced = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSyncStatus();
+  }
+
+  Future<void> _checkSyncStatus() async {
+    final memberId = await SecureStorageService.getUserId();
+    if (memberId != null) {
+      final response = await ApiClient.instance.get(
+        '/api/member/sync-status/${int.parse(memberId)}',
+      );
+      final data = response.data['data'] as Map<String, dynamic>?;
+      if (mounted) {
+        setState(() {
+          _hasSynced = data?['dataSynced'] == true;
+        });
+      }
+    }
+  }
+
+  Future<void> _forceSync() async {
+    setState(() => _isSyncing = true);
+    try {
+      final response = await ApiClient.instance.post('/api/member/sync-data');
+      if (response.data['success'] == true) {
+        setState(() => _hasSynced = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Données synchronisées avec succès!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Erreur: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasSynced) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warningLight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(_isSyncing ? Icons.sync : Icons.cloud_download, color: AppColors.warning),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _isSyncing
+                  ? 'Synchronisation de vos données historiques...'
+                  : 'Synchronisez vos données d\'épargne',
+              style: GoogleFonts.dmSans(fontSize: 13),
+            ),
+          ),
+          if (!_isSyncing)
+            TextButton(
+              onPressed: _forceSync,
+              child: const Text('SYNCHRONISER'),
+            ),
         ],
       ),
     );
