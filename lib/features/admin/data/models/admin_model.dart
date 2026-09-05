@@ -320,6 +320,16 @@ class MemberContributionHistory {
     required this.missingMonths,
   });
 
+  int get advancePaymentCount =>
+      [
+        ...contributions,
+        ...monthlyDeposits,
+      ].where((item) => item.isAdvancePayment).length;
+
+  int get totalAdvanceMonths => [...contributions, ...monthlyDeposits]
+      .where((item) => item.isAdvancePayment)
+      .fold<int>(0, (sum, item) => sum + item.monthsCount);
+
   factory MemberContributionHistory.fromJson(Map<String, dynamic> json) {
     return MemberContributionHistory(
       id: (json['id'] as num?)?.toInt() ?? 0,
@@ -371,6 +381,8 @@ class MonthlyContribution {
   final double amount;
   final double paidAmount;
   final int? daysLate;
+  final int monthsCount;
+  final bool isAdvancePayment;
   final String createdAt;
 
   MonthlyContribution({
@@ -381,10 +393,24 @@ class MonthlyContribution {
     required this.amount,
     required this.paidAmount,
     this.daysLate,
+    this.monthsCount = 1,
+    this.isAdvancePayment = false,
     required this.createdAt,
   });
 
   factory MonthlyContribution.fromJson(Map<String, dynamic> json) {
+    final rawMonthsCount =
+        json['monthsCount'] ??
+        json['months'] ??
+        json['monthsCovered'] ??
+        json['coveredMonths'] ??
+        json['monthsToPay'];
+    final rawIsAdvancePayment =
+        json['isAdvancePayment'] ??
+        json['advancePayment'] ??
+        json['isAdvance'] ??
+        json['hasAdvancePayment'];
+
     return MonthlyContribution(
       id: (json['id'] as num?)?.toInt() ?? 0,
       month: (json['month'] as num?)?.toInt() ?? 0,
@@ -393,8 +419,26 @@ class MonthlyContribution {
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
       daysLate: (json['daysLate'] as num?)?.toInt(),
+      monthsCount: _parseMonthsCount(rawMonthsCount),
+      isAdvancePayment: _parseAdvancePayment(rawIsAdvancePayment),
       createdAt: json['createdAt']?.toString() ?? '',
     );
+  }
+
+  static int _parseMonthsCount(dynamic raw) {
+    if (raw is num) return raw.toInt();
+    if (raw is String) return int.tryParse(raw) ?? 1;
+    return 1;
+  }
+
+  static bool _parseAdvancePayment(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw is num) return raw != 0;
+    if (raw is String) {
+      final value = raw.toLowerCase();
+      return value == 'true' || value == '1' || value == 'yes';
+    }
+    return false;
   }
 
   String get monthLabel {
@@ -408,6 +452,13 @@ class MonthlyContribution {
   String get title => 'Cotisation $month/$year';
   String get subtitle => '$status • payé ${paidAmount.toStringAsFixed(0)} FCFA';
   String get amountLabel => '${paidAmount.toStringAsFixed(0)} FCFA';
+  String get advanceLabel {
+    if (!isAdvancePayment) return 'Paiement mensuel';
+    if (monthsCount > 1) {
+      return 'Paiement anticipé • $monthsCount mois';
+    }
+    return 'Paiement anticipé • 1 mois';
+  }
 }
 
 class MonthlyDeposit extends MonthlyContribution {
@@ -419,6 +470,8 @@ class MonthlyDeposit extends MonthlyContribution {
     required double amount,
     required double paidAmount,
     int? daysLate,
+    int monthsCount = 1,
+    bool isAdvancePayment = false,
     required String createdAt,
   }) : super(
          id: id,
@@ -428,10 +481,24 @@ class MonthlyDeposit extends MonthlyContribution {
          amount: amount,
          paidAmount: paidAmount,
          daysLate: daysLate,
+         monthsCount: monthsCount,
+         isAdvancePayment: isAdvancePayment,
          createdAt: createdAt,
        );
 
   factory MonthlyDeposit.fromJson(Map<String, dynamic> json) {
+    final rawMonthsCount =
+        json['monthsCount'] ??
+        json['months'] ??
+        json['monthsCovered'] ??
+        json['coveredMonths'] ??
+        json['monthsToPay'];
+    final rawIsAdvancePayment =
+        json['isAdvancePayment'] ??
+        json['advancePayment'] ??
+        json['isAdvance'] ??
+        json['hasAdvancePayment'];
+
     return MonthlyDeposit(
       id: (json['id'] as num?)?.toInt() ?? 0,
       month: (json['month'] as num?)?.toInt() ?? 0,
@@ -440,6 +507,10 @@ class MonthlyDeposit extends MonthlyContribution {
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
       daysLate: (json['daysLate'] as num?)?.toInt(),
+      monthsCount: MonthlyContribution._parseMonthsCount(rawMonthsCount),
+      isAdvancePayment: MonthlyContribution._parseAdvancePayment(
+        rawIsAdvancePayment,
+      ),
       createdAt: json['createdAt']?.toString() ?? '',
     );
   }

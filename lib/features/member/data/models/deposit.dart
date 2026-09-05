@@ -107,9 +107,9 @@ class UnifiedDepositRequest {
     'paymentMethod': paymentMethod,
     'isAdvancePayment': isAdvancePayment,
   };
-  
+
   double get totalAmount => amountPerMonth * monthsCount;
-  double get minimumRequired => 1000.0 * monthsCount;
+  double get minimumRequired => 5.0 * monthsCount;
   bool get isTotalAmountValid => totalAmount >= minimumRequired;
   bool get isSimpleDeposit => monthsCount == 1;
   bool get isMultipleDeposit => monthsCount > 1;
@@ -145,9 +145,11 @@ class MultipleDepositTransaction {
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       amountPerMonth: (json['amountPerMonth'] as num?)?.toDouble() ?? 0.0,
       monthsCount: json['monthsCount'] as int? ?? 0,
-      monthsToPay: (json['monthsToPay'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList() ?? [],
+      monthsToPay:
+          (json['monthsToPay'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       paymentPhone: json['paymentPhone'] as String? ?? '',
       paymentMethod: json['paymentMethod'] as String? ?? '',
       status: json['status'] as String? ?? 'PENDING',
