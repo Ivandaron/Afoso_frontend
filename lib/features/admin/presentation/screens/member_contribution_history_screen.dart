@@ -108,7 +108,7 @@ class _MemberContributionHistoryContent extends StatelessWidget {
   String _formatDate(String raw) {
     try {
       final parsed = DateTime.parse(raw);
-      return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+      return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
     } catch (_) {
       return raw.length > 10 ? raw.substring(0, 10) : raw;
     }
@@ -186,13 +186,23 @@ class _MemberContributionHistoryContent extends StatelessWidget {
                 value: history.totalLatePayments.toString(),
                 valueColor: AppColors.warning,
               ),
+              _InfoItem(
+                label: 'Paiements anticipés',
+                value: history.advancePaymentCount.toString(),
+                valueColor: AppColors.primary,
+              ),
+              _InfoItem(
+                label: 'Mois couverts en avance',
+                value: history.totalAdvanceMonths.toString(),
+                valueColor: AppColors.warning,
+              ),
             ],
           ),
           const SizedBox(height: 16),
           _HistorySection(
-            title: 'Historique des contributions',
+            title: 'Historique des dépôts',
             items: history.contributions,
-            emptyMessage: 'Aucune contribution trouvée',
+            emptyMessage: 'Aucun dépôt trouvé',
             showDate: false,
             formatDate: _formatDate,
           ),
@@ -354,12 +364,18 @@ class _HistorySection extends StatelessWidget {
                             : AppColors.danger;
                     final displayText =
                         showDate ? formatDate(item.createdAt) : item.monthLabel;
-                    final itemTitle = showDate ? 'Cagnotte' : item.title;
+                    final itemTitle = showDate ? 'Dépôt' : item.title;
                     final itemSubtitle =
                         showDate
-                            ? (item.paidAmount > 0 ? 'Complet' : item.status)
+                            ? (item.isAdvancePayment
+                                ? item.advanceLabel
+                                : (item.paidAmount > 0
+                                    ? 'Dépôt effectué'
+                                    : item.status))
                             : (item.paidAmount > 0
-                                ? 'Complet • ${item.paidAmount.toStringAsFixed(0)} FCFA'
+                                ? (item.isAdvancePayment
+                                    ? '${item.advanceLabel} • ${item.paidAmount.toStringAsFixed(0)} FCFA'
+                                    : 'Dépôt effectué • ${item.paidAmount.toStringAsFixed(0)} FCFA')
                                 : item.status);
                     return Padding(
                       padding: const EdgeInsets.symmetric(

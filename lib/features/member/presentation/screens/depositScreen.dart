@@ -59,7 +59,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
   bool get _isFormValid {
     if (_paymentPhoneController.text.trim().isEmpty) return false;
     if (Validators.phone(_paymentPhoneController.text) != null) return false;
-    if (_amountPerMonth < 1000) return false;
+    if (_amountPerMonth < 5) return false;
     return _depositRequest.isTotalAmountValid;
   }
 
@@ -94,12 +94,13 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
         message = 'Numéro de paiement requis';
       } else if (Validators.phone(_paymentPhoneController.text) != null) {
         message = 'Numéro invalide';
-      } else if (_amountPerMonth < 1000) {
-        message = 'Le montant minimum par mois est de 1000 FCFA';
+      } else if (_amountPerMonth < 5) {
+        message = 'Le montant minimum par mois est de 5 FCFA';
       } else if (!_depositRequest.isTotalAmountValid) {
-        message = 'Pour $_monthsCount mois, le montant total minimum est de '
+        message =
+            'Pour $_monthsCount mois, le montant total minimum est de '
             '${_depositRequest.minimumRequired.toInt()} FCFA '
-            '(1000 FCFA × $_monthsCount mois)';
+            '(5 FCFA × $_monthsCount mois)';
       }
       _showSnack(message, isError: true);
       return;
@@ -122,10 +123,11 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _PaymentConfirmSheet(
-        transaction: tx,
-        onClose: () => Navigator.pop(context, true),
-      ),
+      builder:
+          (_) => _PaymentConfirmSheet(
+            transaction: tx,
+            onClose: () => Navigator.pop(context, true),
+          ),
     );
 
     if (mounted && result == true) {
@@ -191,7 +193,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                 // Carte info mois en cours
                 FadeInDown(child: _CurrentMonthCard()),
                 const SizedBox(height: 24),
-                
+
                 // Formulaire
                 FadeInUp(
                   delay: const Duration(milliseconds: 100),
@@ -214,7 +216,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                           ),
                         ),
                         const SizedBox(height: 20),
-                        
+
                         // Montant par mois
                         AfosoTextField(
                           label: 'Montant par mois (FCFA)',
@@ -235,20 +237,20 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                             color: AppColors.textHint,
                           ),
                         ),
-                        
+
                         // Message montant minimum
-                        if (_amountPerMonth < 1000)
+                        if (_amountPerMonth < 5)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: Text(
-                              '⚠️ Minimum 1000 FCFA par mois',
+                              '⚠️ Minimum 5 FCFA par mois',
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 color: AppColors.danger,
                               ),
                             ),
                           ),
-                        
+
                         const SizedBox(height: 16),
                         Text(
                           'Le mois courant est toujours inclus. Choisissez 1 mois pour payer le mois en cours ou plusieurs mois pour payer d\'avance.',
@@ -265,12 +267,12 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                           },
                           amountPerMonth: _amountPerMonth,
                           totalAmount: _amountPerMonth * _monthsCount,
-                          minimumRequired: 1000.0 * _monthsCount,
+                          minimumRequired: 5.0 * _monthsCount,
                           isValid: _depositRequest.isTotalAmountValid,
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Méthode de paiement
                         AfosoSection(
                           title: 'MÉTHODE',
@@ -280,7 +282,8 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                         ...PaymentMethod.values.map((method) {
                           final isSelected = _paymentMethod == method;
                           return GestureDetector(
-                            onTap: () => setState(() => _paymentMethod = method),
+                            onTap:
+                                () => setState(() => _paymentMethod = method),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.only(bottom: 8),
@@ -289,14 +292,16 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.primarySurface
-                                    : AppColors.background,
+                                color:
+                                    isSelected
+                                        ? AppColors.primarySurface
+                                        : AppColors.background,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.border,
+                                  color:
+                                      isSelected
+                                          ? AppColors.primary
+                                          : AppColors.border,
                                   width: isSelected ? 2 : 1.5,
                                 ),
                               ),
@@ -312,12 +317,14 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                                       method.label,
                                       style: GoogleFonts.dmSans(
                                         fontSize: 14,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w400,
-                                        color: isSelected
-                                            ? AppColors.primary
-                                            : AppColors.textPrimary,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w700
+                                                : FontWeight.w400,
+                                        color:
+                                            isSelected
+                                                ? AppColors.primary
+                                                : AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
@@ -333,7 +340,7 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                           );
                         }),
                         const SizedBox(height: 16),
-                        
+
                         // Numéro de paiement
                         AfosoTextField(
                           label: 'Numéro de paiement',
@@ -348,18 +355,19 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
                           ),
                         ),
                         const SizedBox(height: 24),
-                        
+
                         // Bouton de paiement avec affichage du total
                         AfosoButton(
-                          label: _monthsCount == 1
-                              ? 'Payer ${_depositRequest.totalAmount.toInt()} FCFA'
-                              : 'Payer ${_depositRequest.totalAmount.toInt()} FCFA '
-                                  '(pour ${_monthsCount} mois)',
+                          label:
+                              _monthsCount == 1
+                                  ? 'Payer ${_depositRequest.totalAmount.toInt()} FCFA'
+                                  : 'Payer ${_depositRequest.totalAmount.toInt()} FCFA '
+                                      '(pour ${_monthsCount} mois)',
                           isLoading: isLoading,
                           onPressed: _handleDeposit,
                           icon: const Icon(Icons.send_rounded, size: 18),
                         ),
-                        
+
                         if (_monthsCount > 1)
                           Padding(
                             padding: const EdgeInsets.only(top: 12),
@@ -382,61 +390,67 @@ class _DepositScreenState extends ConsumerState<DepositScreen>
 
           // ── Onglet 2 : Historique (inchangé) ─────────────────────────────
           depositsAsync.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-            error: (e, _) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: AppColors.danger,
+            loading:
+                () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+            error:
+                (e, _) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: AppColors.danger,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Erreur de chargement',
+                        style: GoogleFonts.dmSans(color: AppColors.danger),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () => ref.invalidate(myDepositsProvider),
+                        child: const Text('Réessayer'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Erreur de chargement',
-                    style: GoogleFonts.dmSans(color: AppColors.danger),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => ref.invalidate(myDepositsProvider),
-                    child: const Text('Réessayer'),
-                  ),
-                ],
-              ),
-            ),
-            data: (deposits) => deposits.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.savings_outlined,
-                          size: 56,
-                          color: AppColors.textHint,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Aucune cotisation',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 16,
-                            color: AppColors.textSecondary,
+                ),
+            data:
+                (deposits) =>
+                    deposits.isEmpty
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.savings_outlined,
+                                size: 56,
+                                color: AppColors.textHint,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Aucune cotisation',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh:
+                              () async => ref.invalidate(myDepositsProvider),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(20),
+                            itemCount: deposits.length,
+                            itemBuilder:
+                                (_, i) => DepositListTile(deposit: deposits[i]),
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    color: AppColors.primary,
-                    onRefresh: () async => ref.invalidate(myDepositsProvider),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: deposits.length,
-                      itemBuilder: (_, i) => DepositListTile(deposit: deposits[i]),
-                    ),
-                  ),
           ),
         ],
       ),
@@ -453,71 +467,73 @@ class _CurrentMonthCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summaryAsync = ref.watch(depositSummaryProvider);
     return summaryAsync.when(
-      loading: () => Container(
-        height: 80,
-        decoration: BoxDecoration(
-          color: AppColors.border,
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (summary) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.calendar_month_rounded,
-              color: Colors.white,
-              size: 32,
+      loading:
+          () => Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    summary.currentMonth.month,
-                    style: GoogleFonts.dmSans(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
+          ),
+      error: (_, __) => const SizedBox.shrink(),
+      data:
+          (summary) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_month_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        summary.currentMonth.month,
+                        style: GoogleFonts.dmSans(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '${summary.currentMonth.total.toStringAsFixed(0)} FCFA cotisés',
+                        style: GoogleFonts.dmSans(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '${summary.currentMonth.total.toStringAsFixed(0)} FCFA cotisés',
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(51),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${summary.currentMonth.depositCount} dépôt(s)',
                     style: GoogleFonts.dmSans(
                       color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 5,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(51),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${summary.currentMonth.depositCount} dépôt(s)',
-                style: GoogleFonts.dmSans(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
@@ -604,7 +620,10 @@ class _PaymentConfirmSheet extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _Row('Montant total', '${transaction.totalAmount.toInt()} FCFA'),
+                _Row(
+                  'Montant total',
+                  '${transaction.totalAmount.toInt()} FCFA',
+                ),
                 if (transaction.isAdvancePayment) ...[
                   const Divider(height: 20),
                   _Row('Mois concernés', transaction.monthsToPay.join(', ')),
