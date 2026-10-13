@@ -7,7 +7,9 @@ import 'package:afoso1/features/member/data/models/alert.dart';
 class MemberRepository {
   final ApiClient _api = ApiClient.instance;
 
-  // ── DÉPÔTS ─────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DÉPÔTS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /// GET /api/me/deposits/summary
   Future<DepositSummary> getDepositSummary() async {
@@ -36,17 +38,9 @@ class MemberRepository {
   }
 
   /// POST /api/me/deposits/initiate
-  /// NOTE: legacy single-month `initiateDeposit` endpoint replaced by
-  /// `initiateUnifiedDeposit` which supports one or multiple months.
-  Future<MultipleDepositTransaction> initiateDeposit(
-    UnifiedDepositRequest request,
-  ) async {
-    return initiateUnifiedDeposit(request);
-  }
-
-   /// 🔥 NOUVEAU: Endpoint unifié pour les dépôts (1 mois ou plusieurs)
-  Future<MultipleDepositTransaction> initiateUnifiedDeposit(
-    UnifiedDepositRequest request,
+  /// Initie un paiement pour N mois explicites.
+  Future<MultiMonthDepositTransaction> initiateMultiMonthDeposit(
+    MultiMonthDepositRequest request,
   ) async {
     final response = await _api.post(
       '/api/me/deposits/initiate',
@@ -55,15 +49,60 @@ class MemberRepository {
 
     final json = response.data as Map<String, dynamic>;
     if (json['success'] != true) {
-      throw ApiException(message: json['message'] as String? ?? 'Erreur');
+      throw ApiException(
+        message: json['message'] as String? ?? 'Erreur lors du paiement',
+      );
     }
     final data = json['data'] as Map<String, dynamic>;
-    return MultipleDepositTransaction.fromJson(data);
+    return MultiMonthDepositTransaction.fromJson(data);
   }
 
-  // ── CAGNOTTES SOLIDAIRES ────────────────────────────────────────────────────
+  /// GET /api/me/deposits/calendar?year=2026
+  Future<DepositCalendar> getDepositCalendar({int? year}) async {
+    final response = await _api.get(
+      '/api/me/deposits/calendar',
+      queryParameters: {if (year != null) 'year': year},
+    );
 
-  /// GET /api/solidarity-funds/active
+    final json = response.data as Map<String, dynamic>;
+    if (json['success'] != true) {
+      throw ApiException(
+        message: json['message'] as String? ?? 'Erreur de chargement',
+      );
+    }
+    final data = json['data'] as Map<String, dynamic>;
+    return DepositCalendar.fromJson(data);
+  }
+
+  /// GET /api/me/deposits/situation
+  Future<MemberSituation> getMemberSituation() async {
+    final response = await _api.get('/api/me/deposits/situation');
+
+    final json = response.data as Map<String, dynamic>;
+    if (json['success'] != true) {
+      throw ApiException(
+        message: json['message'] as String? ?? 'Erreur de chargement',
+      );
+    }
+    final data = json['data'] as Map<String, dynamic>;
+    return MemberSituation.fromJson(data);
+  }
+
+  Future<PaymentVerifyResult> verifyPayment(String reference) async {
+    final response = await _api.post('/api/me/deposits/$reference/verify');
+    final json = response.data as Map<String, dynamic>;
+    final data = json['data'] as Map<String, dynamic>? ?? {};
+    return PaymentVerifyResult(
+      reference: data['reference'] as String? ?? reference,
+      status: data['status'] as String? ?? 'PENDING',
+      isCompleted: data['isCompleted'] as bool? ?? false,
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CAGNOTTES SOLIDAIRES
+  // ═══════════════════════════════════════════════════════════════════════════
+
   Future<SolidarityFund?> getActiveFund() async {
     try {
       final response = await _api.get('/api/solidarity-funds/active');
@@ -73,13 +112,11 @@ class MemberRepository {
       );
       return apiResp.data;
     } catch (e) {
-      // Log l'erreur pour le debugging
       print('Erreur lors de la récupération de la cagnotte active: $e');
-      return null; // Aucune cagnotte active
+      return null;
     }
   }
 
-  /// GET /api/solidarity-funds  (liste paginée)
   Future<List<SolidarityFund>> getAllFunds({
     int page = 0,
     int size = 10,
@@ -95,7 +132,6 @@ class MemberRepository {
         .toList();
   }
 
-  /// GET /api/solidarity-funds/member/me/history
   Future<List<SolidarityFund>> getMySolidarityHistory() async {
     final response = await _api.get('/api/solidarity-funds/member/me/history');
     final apiResp = ApiResponse<List<dynamic>>.fromJson(
@@ -107,7 +143,6 @@ class MemberRepository {
         .toList();
   }
 
-  /// GET /api/solidarity-funds/{id}/has-contributed
   Future<bool> hasContributed(int fundId) async {
     final response = await _api.get(
       '/api/solidarity-funds/$fundId/has-contributed',
@@ -117,7 +152,6 @@ class MemberRepository {
     return data?['hasContributed'] as bool? ?? false;
   }
 
-  /// POST /api/solidarity-funds/{id}/contribute
   Future<SolidarityContribution> contribute(
     int fundId,
     ContributeSolidarityRequest request,
@@ -136,13 +170,12 @@ class MemberRepository {
     return apiResp.data!;
   }
 
-  // ── ALERTES ─────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ALERTES
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  /// GET /api/members/{id}/alerts/unread
   Future<List<MemberAlert>> getUnreadAlerts(int memberId) async {
-    final response = await _api.get(
-      '/api/members/$memberId/alerts/unread',
-    );
+    final response = await _api.get('/api/members/$memberId/alerts/unread');
     final json = response.data as Map<String, dynamic>;
     final datalist = json['data'] as List<dynamic>? ?? [];
     return datalist
@@ -150,11 +183,8 @@ class MemberRepository {
         .toList();
   }
 
-  /// GET /api/members/{id}/alerts
   Future<List<MemberAlert>> getMemberAlerts(int memberId) async {
-    final response = await _api.get(
-      '/api/members/$memberId/alerts',
-    );
+    final response = await _api.get('/api/members/$memberId/alerts');
     final json = response.data as Map<String, dynamic>;
     final dataList = json['data'] as List<dynamic>? ?? [];
     return dataList
@@ -162,12 +192,10 @@ class MemberRepository {
         .toList();
   }
 
-  /// PUT /api/alerts/{alertId}/read
   Future<void> markAlertAsRead(int alertId) async {
     await _api.put('/api/alerts/$alertId/read');
   }
 
-  /// PUT /api/members/{id}/alerts/read-all
   Future<void> markAllAlertsAsRead(int memberId) async {
     await _api.put('/api/members/$memberId/alerts/read-all');
   }

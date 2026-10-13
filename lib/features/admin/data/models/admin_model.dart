@@ -1,3 +1,7 @@
+// =============================================================================
+// ADMIN MODELS — Version enrichie pour les paiements anticipés
+// =============================================================================
+
 class DashboardStats {
   final double totalDeposits;
   final int activeMembers;
@@ -5,8 +9,10 @@ class DashboardStats {
   final int failedTransactions;
   final int totalLoans;
   final double totalLoanAmount;
-  final double
-  totalRegistrationFees; // depuis /registration-fees/total (montant réel)
+  final double totalRegistrationFees;
+
+  // 🔥 NOUVEAU : Statistiques des paiements anticipés
+  final AdvancePaymentStats advancePayments;
 
   DashboardStats({
     required this.totalDeposits,
@@ -16,6 +22,7 @@ class DashboardStats {
     required this.totalLoans,
     required this.totalLoanAmount,
     this.totalRegistrationFees = 0.0,
+    this.advancePayments = const AdvancePaymentStats.empty(),
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
@@ -27,6 +34,9 @@ class DashboardStats {
       failedTransactions: (json['failedTransactions'] as num?)?.toInt() ?? 0,
       totalLoans: (json['totalLoans'] as num?)?.toInt() ?? 0,
       totalLoanAmount: (json['totalLoanAmount'] as num?)?.toDouble() ?? 0.0,
+      advancePayments: AdvancePaymentStats.fromJson(
+        json['advancePayments'] as Map<String, dynamic>?,
+      ),
     );
   }
 
@@ -38,7 +48,50 @@ class DashboardStats {
     totalLoans: totalLoans,
     totalLoanAmount: totalLoanAmount,
     totalRegistrationFees: fees,
+    advancePayments: advancePayments,
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 NOUVEAU : Statistiques des paiements anticipés
+// ─────────────────────────────────────────────────────────────────────────────
+class AdvancePaymentStats {
+  final int totalAdvancePayments;
+  final int distinctMembers;
+  final int totalAdvanceMonths;
+  final double totalAdvanceAmount;
+  final double averageMonthsPerPayment;
+
+  const AdvancePaymentStats({
+    this.totalAdvancePayments = 0,
+    this.distinctMembers = 0,
+    this.totalAdvanceMonths = 0,
+    this.totalAdvanceAmount = 0.0,
+    this.averageMonthsPerPayment = 0.0,
+  });
+
+  const AdvancePaymentStats.empty()
+    : totalAdvancePayments = 0,
+      distinctMembers = 0,
+      totalAdvanceMonths = 0,
+      totalAdvanceAmount = 0.0,
+      averageMonthsPerPayment = 0.0;
+
+  factory AdvancePaymentStats.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const AdvancePaymentStats.empty();
+    return AdvancePaymentStats(
+      totalAdvancePayments:
+          (json['totalAdvancePayments'] as num?)?.toInt() ?? 0,
+      distinctMembers: (json['distinctMembers'] as num?)?.toInt() ?? 0,
+      totalAdvanceMonths: (json['totalAdvanceMonths'] as num?)?.toInt() ?? 0,
+      totalAdvanceAmount:
+          (json['totalAdvanceAmount'] as num?)?.toDouble() ?? 0.0,
+      averageMonthsPerPayment:
+          (json['averageMonthsPerPayment'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  bool get hasData => totalAdvancePayments > 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,8 +101,8 @@ class PeriodOverview {
   final DateTime startDate;
   final DateTime endDate;
   final int days;
-  final double totalMonthlyPayments; // cotisations mensuelles
-  final double totalRegistrationPayments; // frais d'inscription sur la période
+  final double totalMonthlyPayments;
+  final double totalRegistrationPayments;
   final int newMembers;
 
   PeriodOverview({
@@ -106,7 +159,6 @@ class DepositsSummaryItem {
   });
 
   factory DepositsSummaryItem.fromJson(Map<String, dynamic> json) {
-    // memberName peut être une String ou un Map {firstName, lastName}
     String resolveName(dynamic raw) {
       if (raw == null) return '';
       if (raw is String) return raw;
@@ -118,7 +170,6 @@ class DepositsSummaryItem {
       return raw.toString();
     }
 
-    // matricule peut être un objet {value: "..."} ou une String directe
     String? resolveMatricule(dynamic raw) {
       if (raw == null) return null;
       if (raw is String) return raw;
@@ -126,12 +177,10 @@ class DepositsSummaryItem {
       return raw.toString();
     }
 
-    // lastDepositDate : JPA peut retourner {year, month, day} ou "YYYY-MM-DD" ou null
     String? resolveDate(dynamic raw) {
       if (raw == null) return null;
       if (raw is String) return raw;
       if (raw is Map) {
-        // Format JPA LocalDate sérialisé : {year, monthValue, dayOfMonth}
         final y = raw['year'] ?? raw['Year'];
         final m = raw['monthValue'] ?? raw['month'] ?? raw['Month'];
         final d = raw['dayOfMonth'] ?? raw['day'] ?? raw['Day'];
@@ -143,7 +192,6 @@ class DepositsSummaryItem {
       return raw.toString();
     }
 
-    // isActive : peut être bool true/false ou int 1/0 selon le driver MySQL
     bool resolveBool(dynamic raw) {
       if (raw == null) return true;
       if (raw is bool) return raw;
@@ -171,6 +219,9 @@ class DepositsSummaryItem {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INSCRIPTIONS EN ATTENTE
+// ─────────────────────────────────────────────────────────────────────────────
 class PendingRegistration {
   final int id;
   final String firstName;
@@ -197,8 +248,6 @@ class PendingRegistration {
   });
 
   factory PendingRegistration.fromJson(Map<String, dynamic> json) {
-    // RegistrationResponseDTO retourne : firstName, lastName, phone, email, city
-    // Fallback sur memberName/memberPhone si jamais l'entité brute est retournée
     final memberName = json['memberName'] as String? ?? '';
     final parts = memberName.split(' ');
 
@@ -230,6 +279,9 @@ class PendingRegistration {
   String get fullName => '$firstName $lastName'.trim();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 AdminMember ENRICHI — avec paiements anticipés + statut mois courant
+// ─────────────────────────────────────────────────────────────────────────────
 class AdminMember {
   final int id;
   final String fullName;
@@ -242,6 +294,16 @@ class AdminMember {
   final String createdAt;
   final double? balance;
 
+  // 🔥 NOUVEAU : Paiements anticipés
+  final bool hasAdvancePayment;
+  final int advanceMonthsCount;
+  final double advanceAmount;
+
+  // 🔥 NOUVEAU : Situation du mois courant
+  final bool currentMonthPaid;
+  final String? lastPaymentDate;
+  final String currentMonthStatus;
+
   AdminMember({
     required this.id,
     required this.fullName,
@@ -253,9 +315,27 @@ class AdminMember {
     this.city,
     required this.createdAt,
     this.balance,
+    this.hasAdvancePayment = false,
+    this.advanceMonthsCount = 0,
+    this.advanceAmount = 0.0,
+    this.currentMonthPaid = false,
+    this.lastPaymentDate,
+    this.currentMonthStatus = 'NOT_PAID',
   });
 
   factory AdminMember.fromJson(Map<String, dynamic> json) {
+    // Gestion des booléens polymorphiques (bool / int / string)
+    bool parseBool(dynamic raw, {bool defaultValue = false}) {
+      if (raw == null) return defaultValue;
+      if (raw is bool) return raw;
+      if (raw is int) return raw != 0;
+      if (raw is String) {
+        final v = raw.toLowerCase();
+        return v == 'true' || v == '1' || v == 'yes';
+      }
+      return defaultValue;
+    }
+
     return AdminMember(
       id: (json['id'] as num?)?.toInt() ?? 0,
       fullName:
@@ -265,16 +345,44 @@ class AdminMember {
       email: json['email'] as String?,
       matricule: json['matricule'] as String?,
       status: json['status'] as String? ?? 'ACTIVE',
-      active: json['active'] as bool? ?? true,
+      active: parseBool(json['active'], defaultValue: true),
       city: json['city'] as String?,
       createdAt: json['createdAt']?.toString() ?? '',
       balance: (json['balance'] as num?)?.toDouble(),
+      // 🔥 Nouveaux champs
+      hasAdvancePayment: parseBool(json['hasAdvancePayment']),
+      advanceMonthsCount: (json['advanceMonthsCount'] as num?)?.toInt() ?? 0,
+      advanceAmount: (json['advanceAmount'] as num?)?.toDouble() ?? 0.0,
+      currentMonthPaid: parseBool(json['currentMonthPaid']),
+      lastPaymentDate: json['lastPaymentDate']?.toString(),
+      currentMonthStatus: json['currentMonthStatus'] as String? ?? 'NOT_PAID',
     );
   }
 
   bool get isActive => active && status == 'ACTIVE';
+
+  // 🔥 Indicateur de statut du mois courant avec libellé
+  String get currentMonthStatusLabel {
+    switch (currentMonthStatus.toUpperCase()) {
+      case 'COMPLETED':
+      case 'PAID':
+        return 'Payé ce mois';
+      case 'PENDING':
+        return 'En attente';
+      case 'PARTIAL':
+        return 'Partiel';
+      case 'OVERDUE':
+        return 'En retard';
+      case 'NOT_PAID':
+      default:
+        return 'Non payé';
+    }
+  }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HISTORIQUE COMPLET D'UN MEMBRE
+// ─────────────────────────────────────────────────────────────────────────────
 class MemberContributionHistory {
   final int id;
   final String fullName;
@@ -293,6 +401,7 @@ class MemberContributionHistory {
   final int totalPendingPayments;
   final int totalPartialPayments;
   final int totalLatePayments;
+  final int totalAdvancePayments;
   final List<MonthlyContribution> contributions;
   final List<MonthlyDeposit> monthlyDeposits;
   final List<MissingMonth> missingMonths;
@@ -315,20 +424,18 @@ class MemberContributionHistory {
     required this.totalPendingPayments,
     required this.totalPartialPayments,
     required this.totalLatePayments,
+    this.totalAdvancePayments = 0,
     required this.contributions,
     required this.monthlyDeposits,
     required this.missingMonths,
   });
 
-  int get advancePaymentCount =>
-      [
-        ...contributions,
-        ...monthlyDeposits,
-      ].where((item) => item.isAdvancePayment).length;
+  int get advancePaymentCount => totalAdvancePayments;
 
-  int get totalAdvanceMonths => [...contributions, ...monthlyDeposits]
-      .where((item) => item.isAdvancePayment)
-      .fold<int>(0, (sum, item) => sum + item.monthsCount);
+  int get totalAdvanceMonths => contributions.fold(
+    0,
+    (sum, item) => sum + (item.isAdvancePayment ? item.monthsInAdvance : 0),
+  );
 
   factory MemberContributionHistory.fromJson(Map<String, dynamic> json) {
     return MemberContributionHistory(
@@ -352,6 +459,8 @@ class MemberContributionHistory {
       totalPartialPayments:
           (json['totalPartialPayments'] as num?)?.toInt() ?? 0,
       totalLatePayments: (json['totalLatePayments'] as num?)?.toInt() ?? 0,
+      totalAdvancePayments:
+          (json['totalAdvancePayments'] as num?)?.toInt() ?? 0,
       contributions:
           (json['contributions'] as List<dynamic>?)
               ?.map(
@@ -373,6 +482,9 @@ class MemberContributionHistory {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTRIBUTION MENSUELLE
+// ─────────────────────────────────────────────────────────────────────────────
 class MonthlyContribution {
   final int id;
   final int month;
@@ -381,8 +493,8 @@ class MonthlyContribution {
   final double amount;
   final double paidAmount;
   final int? daysLate;
-  final int monthsCount;
   final bool isAdvancePayment;
+  final int monthsInAdvance;
   final String createdAt;
 
   MonthlyContribution({
@@ -393,24 +505,12 @@ class MonthlyContribution {
     required this.amount,
     required this.paidAmount,
     this.daysLate,
-    this.monthsCount = 1,
     this.isAdvancePayment = false,
+    this.monthsInAdvance = 0,
     required this.createdAt,
   });
 
   factory MonthlyContribution.fromJson(Map<String, dynamic> json) {
-    final rawMonthsCount =
-        json['monthsCount'] ??
-        json['months'] ??
-        json['monthsCovered'] ??
-        json['coveredMonths'] ??
-        json['monthsToPay'];
-    final rawIsAdvancePayment =
-        json['isAdvancePayment'] ??
-        json['advancePayment'] ??
-        json['isAdvance'] ??
-        json['hasAdvancePayment'];
-
     return MonthlyContribution(
       id: (json['id'] as num?)?.toInt() ?? 0,
       month: (json['month'] as num?)?.toInt() ?? 0,
@@ -419,26 +519,10 @@ class MonthlyContribution {
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
       daysLate: (json['daysLate'] as num?)?.toInt(),
-      monthsCount: _parseMonthsCount(rawMonthsCount),
-      isAdvancePayment: _parseAdvancePayment(rawIsAdvancePayment),
+      isAdvancePayment: json['isAdvance'] as bool? ?? false,
+      monthsInAdvance: (json['monthsInAdvance'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt']?.toString() ?? '',
     );
-  }
-
-  static int _parseMonthsCount(dynamic raw) {
-    if (raw is num) return raw.toInt();
-    if (raw is String) return int.tryParse(raw) ?? 1;
-    return 1;
-  }
-
-  static bool _parseAdvancePayment(dynamic raw) {
-    if (raw is bool) return raw;
-    if (raw is num) return raw != 0;
-    if (raw is String) {
-      final value = raw.toLowerCase();
-      return value == 'true' || value == '1' || value == 'yes';
-    }
-    return false;
   }
 
   String get monthLabel {
@@ -449,16 +533,14 @@ class MonthlyContribution {
     return '$month/$yearString';
   }
 
+  String get advanceLabel =>
+      isAdvancePayment
+          ? (monthsInAdvance > 0 ? '+$monthsInAdvance mois' : 'Paiement anticipé')
+          : 'Paiement standard';
+
   String get title => 'Cotisation $month/$year';
   String get subtitle => '$status • payé ${paidAmount.toStringAsFixed(0)} FCFA';
   String get amountLabel => '${paidAmount.toStringAsFixed(0)} FCFA';
-  String get advanceLabel {
-    if (!isAdvancePayment) return 'Paiement mensuel';
-    if (monthsCount > 1) {
-      return 'Paiement anticipé • $monthsCount mois';
-    }
-    return 'Paiement anticipé • 1 mois';
-  }
 }
 
 class MonthlyDeposit extends MonthlyContribution {
@@ -470,8 +552,8 @@ class MonthlyDeposit extends MonthlyContribution {
     required double amount,
     required double paidAmount,
     int? daysLate,
-    int monthsCount = 1,
     bool isAdvancePayment = false,
+    int monthsInAdvance = 0,
     required String createdAt,
   }) : super(
          id: id,
@@ -481,24 +563,12 @@ class MonthlyDeposit extends MonthlyContribution {
          amount: amount,
          paidAmount: paidAmount,
          daysLate: daysLate,
-         monthsCount: monthsCount,
          isAdvancePayment: isAdvancePayment,
+         monthsInAdvance: monthsInAdvance,
          createdAt: createdAt,
        );
 
   factory MonthlyDeposit.fromJson(Map<String, dynamic> json) {
-    final rawMonthsCount =
-        json['monthsCount'] ??
-        json['months'] ??
-        json['monthsCovered'] ??
-        json['coveredMonths'] ??
-        json['monthsToPay'];
-    final rawIsAdvancePayment =
-        json['isAdvancePayment'] ??
-        json['advancePayment'] ??
-        json['isAdvance'] ??
-        json['hasAdvancePayment'];
-
     return MonthlyDeposit(
       id: (json['id'] as num?)?.toInt() ?? 0,
       month: (json['month'] as num?)?.toInt() ?? 0,
@@ -507,15 +577,16 @@ class MonthlyDeposit extends MonthlyContribution {
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
       daysLate: (json['daysLate'] as num?)?.toInt(),
-      monthsCount: MonthlyContribution._parseMonthsCount(rawMonthsCount),
-      isAdvancePayment: MonthlyContribution._parseAdvancePayment(
-        rawIsAdvancePayment,
-      ),
+      isAdvancePayment: json['isAdvance'] as bool? ?? false,
+      monthsInAdvance: (json['monthsInAdvance'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt']?.toString() ?? '',
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MOIS MANQUANTS
+// ─────────────────────────────────────────────────────────────────────────────
 class MissingMonth {
   final int year;
   final int month;
@@ -561,6 +632,186 @@ class MissingMonth {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 NOUVEAU : Paiement anticipé (endpoint /payments/advance)
+// ─────────────────────────────────────────────────────────────────────────────
+class AdvancePayment {
+  final int paymentId;
+  final int? memberId;
+  final String? memberName;
+  final int month;
+  final int year;
+  final double targetAmount;
+  final double paidAmount;
+  final String status;
+  final bool isAdvance;
+  final int monthsInAdvance;
+  final String? paymentDate;
+  final String? dueDate;
+  final bool isCompleted;
+
+  AdvancePayment({
+    required this.paymentId,
+    this.memberId,
+    this.memberName,
+    required this.month,
+    required this.year,
+    required this.targetAmount,
+    required this.paidAmount,
+    required this.status,
+    required this.isAdvance,
+    required this.monthsInAdvance,
+    this.paymentDate,
+    this.dueDate,
+    required this.isCompleted,
+  });
+
+  factory AdvancePayment.fromJson(Map<String, dynamic> json) {
+    return AdvancePayment(
+      paymentId: (json['paymentId'] as num?)?.toInt() ?? 0,
+      memberId: (json['memberId'] as num?)?.toInt(),
+      memberName: json['memberName'] as String?,
+      month: (json['month'] as num?)?.toInt() ?? 0,
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      targetAmount: (json['targetAmount'] as num?)?.toDouble() ?? 0.0,
+      paidAmount: (json['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      status: json['status'] as String? ?? 'UNKNOWN',
+      isAdvance: json['isAdvance'] as bool? ?? true,
+      monthsInAdvance: (json['monthsInAdvance'] as num?)?.toInt() ?? 0,
+      paymentDate: json['paymentDate']?.toString(),
+      dueDate: json['dueDate']?.toString(),
+      isCompleted: json['isCompleted'] as bool? ?? false,
+    );
+  }
+
+  String get monthLabel {
+    const months = [
+      '',
+      'Jan',
+      'Fév',
+      'Mar',
+      'Avr',
+      'Mai',
+      'Juin',
+      'Juil',
+      'Août',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Déc',
+    ];
+    if (month < 1 || month > 12) return '$month/$year';
+    return '${months[month]} $year';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 NOUVEAU : Top membre par avance
+// ─────────────────────────────────────────────────────────────────────────────
+class TopAdvanceMember {
+  final int memberId;
+  final String firstName;
+  final String lastName;
+  final String fullName;
+  final int totalMonthsInAdvance;
+
+  TopAdvanceMember({
+    required this.memberId,
+    required this.firstName,
+    required this.lastName,
+    required this.fullName,
+    required this.totalMonthsInAdvance,
+  });
+
+  factory TopAdvanceMember.fromJson(Map<String, dynamic> json) {
+    final fn = json['firstName'] as String? ?? '';
+    final ln = json['lastName'] as String? ?? '';
+    return TopAdvanceMember(
+      memberId: (json['memberId'] as num?)?.toInt() ?? 0,
+      firstName: fn,
+      lastName: ln,
+      fullName: json['fullName'] as String? ?? '$fn $ln'.trim(),
+      totalMonthsInAdvance:
+          (json['totalMonthsInAdvance'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 NOUVEAU : Membre avec cycle parfait
+// ─────────────────────────────────────────────────────────────────────────────
+class PerfectCycleMember {
+  final int memberId;
+  final String fullName;
+  final String phone;
+  final String? city;
+  final String? matricule;
+
+  PerfectCycleMember({
+    required this.memberId,
+    required this.fullName,
+    required this.phone,
+    this.city,
+    this.matricule,
+  });
+
+  factory PerfectCycleMember.fromJson(Map<String, dynamic> json) {
+    return PerfectCycleMember(
+      memberId: (json['memberId'] as num?)?.toInt() ?? 0,
+      fullName: json['fullName'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      city: json['city'] as String?,
+      matricule: json['matricule'] as String?,
+    );
+  }
+
+  String get initials {
+    final parts = fullName.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 NOUVEAU : Résultat de vérification de cycle parfait (1 membre)
+// ─────────────────────────────────────────────────────────────────────────────
+class PerfectCycleCheck {
+  final int memberId;
+  final String fullName;
+  final int year;
+  final int paidMonths;
+  final int totalMonths;
+  final bool isPerfectCycle;
+  final String completionRate;
+
+  PerfectCycleCheck({
+    required this.memberId,
+    required this.fullName,
+    required this.year,
+    required this.paidMonths,
+    required this.totalMonths,
+    required this.isPerfectCycle,
+    required this.completionRate,
+  });
+
+  factory PerfectCycleCheck.fromJson(Map<String, dynamic> json) {
+    return PerfectCycleCheck(
+      memberId: (json['memberId'] as num?)?.toInt() ?? 0,
+      fullName: json['fullName'] as String? ?? '',
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      paidMonths: (json['paidMonths'] as num?)?.toInt() ?? 0,
+      totalMonths: (json['totalMonths'] as num?)?.toInt() ?? 12,
+      isPerfectCycle: json['isPerfectCycle'] as bool? ?? false,
+      completionRate: json['completionRate'] as String? ?? '0%',
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRÉATION DE CAGNOTTE SOLIDAIRE (existant)
+// ─────────────────────────────────────────────────────────────────────────────
 class CreateSolidarityFundRequest {
   final String description;
   final double amountPerMember;
@@ -578,9 +829,7 @@ class CreateSolidarityFundRequest {
     this.disableNotifications,
   });
 
-  // Fonction pour nettoyer les emojis et caractères non-ASCII
   String _cleanText(String text) {
-    // Supprime les emojis et caractères non-ASCII
     return text.replaceAll(RegExp(r'[^\x00-\x7F]+'), '');
   }
 

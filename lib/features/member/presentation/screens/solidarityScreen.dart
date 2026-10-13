@@ -41,18 +41,50 @@ class _SolidarityScreenState extends ConsumerState<SolidarityScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Cagnottes solidaires'),
-        bottom: TabBar(
-          controller: _tabs,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textHint,
-          indicatorColor: AppColors.primary,
-          indicatorSize: TabBarIndicatorSize.label,
-          labelStyle: GoogleFonts.dmSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        title: Text(
+          'Solidarité',
+          style: GoogleFonts.dmSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
           ),
-          tabs: const [Tab(text: 'Cagnotte active'), Tab(text: 'Historique')],
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            decoration: BoxDecoration(
+              color: AppColors.successLight,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: TabBar(
+              controller: _tabs,
+              labelColor: AppColors.success,
+              unselectedLabelColor: AppColors.textHint,
+              indicatorColor: AppColors.success,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.success.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              labelStyle: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              tabs: const [Tab(text: 'Active'), Tab(text: 'Historique')],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -409,7 +441,6 @@ class _ContributeForm extends ConsumerStatefulWidget {
 
 class _ContributeFormState extends ConsumerState<_ContributeForm> {
   final _phoneController = TextEditingController();
-  PaymentMethod _method = PaymentMethod.orangeMoney;
 
   @override
   void dispose() {
@@ -417,8 +448,14 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
     super.dispose();
   }
 
+  bool _isSupportedMobileMoney(String value) {
+    final cleaned = value.replaceAll(RegExp(r'[\s\-\+]'), '');
+    return RegExp(r'^(6|7|8|9)\d{7,11}$').hasMatch(cleaned);
+  }
+
   Future<void> _contribute() async {
-    if (Validators.phone(_phoneController.text) != null) {
+    if (Validators.phone(_phoneController.text) != null ||
+        !_isSupportedMobileMoney(_phoneController.text)) {
       _show('Numéro invalide', isError: true);
       return;
     }
@@ -428,7 +465,6 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
           widget.fund.id,
           ContributeSolidarityRequest(
             paymentPhone: _phoneController.text.trim(),
-            paymentMethod: _method.value,
           ),
         );
     final s = ref.read(contributeProvider);
@@ -496,62 +532,38 @@ class _ContributeFormState extends ConsumerState<_ContributeForm> {
             ),
           ),
           const SizedBox(height: 16),
-          // Méthode de paiement
-          ...PaymentMethod.values.map((m) {
-            final sel = _method == m;
-            return GestureDetector(
-              onTap: () => setState(() => _method = m),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: sel ? AppColors.primarySurface : AppColors.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: sel ? AppColors.primary : AppColors.border,
-                    width: sel ? 2 : 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(m.emoji, style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        m.label,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                          color:
-                              sel ? AppColors.primary : AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (sel)
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                  ],
-                ),
-              ),
-            );
-          }),
-          const SizedBox(height: 16),
           AfosoTextField(
-            label: 'Numéro de paiement',
+            label: 'Numéro Mobile Money',
             hint: '6XX XXX XXX',
             controller: _phoneController,
             keyboardType: TextInputType.phone,
+            onChanged: (_) => setState(() {}),
             prefixIcon: const Icon(
               Icons.phone_outlined,
               size: 20,
               color: AppColors.textHint,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 12,
+                  color: AppColors.textHint,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Paiement via CAMPAY — votre numéro doit être valide pour continuer.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),

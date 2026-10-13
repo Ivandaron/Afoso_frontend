@@ -31,6 +31,7 @@ class AdminRegistrationsScreen extends ConsumerStatefulWidget {
 class _AdminRegistrationsScreenState
     extends ConsumerState<AdminRegistrationsScreen> {
   String _search = '';
+  String _sort = 'Récents';
 
   void _onActionDone() {
     ref.invalidate(_allPendingProvider);
@@ -90,7 +91,7 @@ class _AdminRegistrationsScreenState
             (e, _) =>
                 _ErrorState(onRetry: () => ref.invalidate(_allPendingProvider)),
         data: (all) {
-          final filtered =
+          var filtered =
               _search.isEmpty
                   ? all
                   : all
@@ -100,6 +101,10 @@ class _AdminRegistrationsScreenState
                             (r.phone.isNotEmpty && r.phone.contains(_search)),
                       )
                       .toList();
+
+          if (_sort == 'Récents') {
+            filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          }
 
           if (filtered.isEmpty) {
             return Center(
@@ -127,21 +132,58 @@ class _AdminRegistrationsScreenState
             );
           }
 
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () async => ref.invalidate(_allPendingProvider),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filtered.length,
-              itemBuilder:
-                  (_, i) => FadeInUp(
-                    delay: Duration(milliseconds: i * 40),
-                    child: _RegistrationCard(
-                      registration: filtered[i],
-                      onActionDone: _onActionDone,
-                    ),
+          return Column(
+            children: [
+              Container(
+                width: double.infinity,
+                color: AppColors.white,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ['Récents', 'Ancien', 'Valide']
+                      .map(
+                        (label) => ChoiceChip(
+                          label: Text(label),
+                          selected: _sort == label,
+                          selectedColor: AppColors.primarySurface,
+                          labelStyle: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                _sort == label
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                          ),
+                          backgroundColor: AppColors.background,
+                          side: BorderSide(
+                            color: _sort == label ? AppColors.primary : AppColors.border,
+                          ),
+                          onSelected: (_) => setState(() => _sort = label),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () async => ref.invalidate(_allPendingProvider),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filtered.length,
+                    itemBuilder:
+                        (_, i) => FadeInUp(
+                          delay: Duration(milliseconds: i * 40),
+                          child: _RegistrationCard(
+                            registration: filtered[i],
+                            onActionDone: _onActionDone,
+                          ),
+                        ),
                   ),
-            ),
+                ),
+              ),
+            ],
           );
         },
       ),

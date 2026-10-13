@@ -17,12 +17,30 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneFocus = FocusNode();
   final _passwordFocus = FocusNode();
+
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
+
+  String? _inlineError;
+
+  @override
+  void initState() {
+    super.initState();
+    _shakeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _shakeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn),
+    );
+  }
 
   @override
   void dispose() {
@@ -30,11 +48,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _phoneFocus.dispose();
     _passwordFocus.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _inlineError = null);
 
     final success = await ref
         .read(authProvider.notifier)
@@ -43,33 +64,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           password: _passwordController.text,
         );
 
-    if (mounted && !success) {
-      final error = ref.read(authProvider).errorMessage;
-      _showError(error ?? 'Identifiants incorrects');
+    if (!mounted) return;
+
+    if (!success) {
+      final error =
+          ref.read(authProvider).errorMessage ?? 'Identifiants incorrects';
+      setState(() => _inlineError = error);
+      _shakeController.forward(from: 0);
+      _showError(error);
     }
-    // La navigation est gérée automatiquement par GoRouter via le redirect
   }
 
   void _showError(String message) {
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: GoogleFonts.dmSans(color: Colors.white, fontSize: 14),
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
         ),
         backgroundColor: AppColors.danger,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -181,94 +211,107 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: 36),
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  // Téléphone
-                  FadeInLeft(
-                    duration: const Duration(milliseconds: 400),
-                    delay: const Duration(milliseconds: 300),
-                    child: AfosoTextField(
-                      label: 'Numéro de téléphone',
-                      hint: 'Ex: 612345678',
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      focusNode: _phoneFocus,
-                      textInputAction: TextInputAction.next,
-                      validator: Validators.phone,
-                      prefixIcon: const Icon(
-                        Icons.phone_outlined,
-                        size: 20,
-                        color: AppColors.textHint,
+            AnimatedBuilder(
+              animation: _shakeAnimation,
+              builder: (context, child) {
+                final dx =
+                    (1 - _shakeAnimation.value) *
+                    8 *
+                    ((_shakeAnimation.value * 10) % 2 == 0 ? 1 : -1);
+                return Transform.translate(offset: Offset(dx, 0), child: child);
+              },
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    if (_inlineError != null) ...[
+                      _InlineErrorBanner(
+                        message: _inlineError!,
+                        onDismiss: () => setState(() => _inlineError = null),
                       ),
-                      onFieldSubmitted:
-                          (_) => FocusScope.of(
-                            context,
-                          ).requestFocus(_passwordFocus),
+                      const SizedBox(height: 16),
+                    ],
+                    FadeInLeft(
+                      duration: const Duration(milliseconds: 400),
+                      delay: const Duration(milliseconds: 300),
+                      child: AfosoTextField(
+                        label: 'Numéro de téléphone',
+                        hint: 'Ex: 612345678',
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        focusNode: _phoneFocus,
+                        textInputAction: TextInputAction.next,
+                        validator: Validators.phone,
+                        prefixIcon: const Icon(
+                          Icons.phone_outlined,
+                          size: 20,
+                          color: AppColors.textHint,
+                        ),
+                        onFieldSubmitted:
+                            (_) => FocusScope.of(
+                              context,
+                            ).requestFocus(_passwordFocus),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Mot de passe
-                  FadeInLeft(
-                    duration: const Duration(milliseconds: 400),
-                    delay: const Duration(milliseconds: 400),
-                    child: AfosoTextField(
-                      label: 'Mot de passe',
-                      hint: '••••••••',
-                      controller: _passwordController,
-                      obscureText: true,
-                      showPasswordToggle: true,
-                      focusNode: _passwordFocus,
-                      textInputAction: TextInputAction.done,
-                      validator:
-                          (v) =>
-                              v == null || v.isEmpty
-                                  ? 'Le mot de passe est requis'
-                                  : null,
-                      prefixIcon: const Icon(
-                        Icons.lock_outline_rounded,
-                        size: 20,
-                        color: AppColors.textHint,
+                    const SizedBox(height: 20),
+                    FadeInLeft(
+                      duration: const Duration(milliseconds: 400),
+                      delay: const Duration(milliseconds: 400),
+                      child: AfosoTextField(
+                        label: 'Mot de passe',
+                        hint: '••••••••',
+                        controller: _passwordController,
+                        obscureText: true,
+                        showPasswordToggle: true,
+                        focusNode: _passwordFocus,
+                        textInputAction: TextInputAction.done,
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Le mot de passe est requis'
+                                    : null,
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                          size: 20,
+                          color: AppColors.textHint,
+                        ),
+                        onFieldSubmitted: (_) => _handleLogin(),
                       ),
-                      onFieldSubmitted: (_) => _handleLogin(),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Mot de passe oublié
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => context.push('/forgot-password'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        'Mot de passe oublié ?',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => context.push('/forgot-password'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          'Mot de passe oublié ?',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
-                  // Bouton connexion
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 400),
-                    delay: const Duration(milliseconds: 500),
-                    child: AfosoButton(
-                      label: 'Se connecter',
-                      onPressed: _handleLogin,
-                      isLoading: isLoading,
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    const SizedBox(height: 28),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 400),
+                      delay: const Duration(milliseconds: 500),
+                      child: AfosoButton(
+                        label: 'Se connecter',
+                        onPressed: isLoading ? null : _handleLogin,
+                        isLoading: isLoading,
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -302,6 +345,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InlineErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onDismiss;
+
+  const _InlineErrorBanner({required this.message, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.dangerLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.danger.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.danger,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.danger,
+                height: 1.4,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onDismiss,
+            child: const Icon(
+              Icons.close_rounded,
+              color: AppColors.danger,
+              size: 18,
+            ),
+          ),
+        ],
       ),
     );
   }

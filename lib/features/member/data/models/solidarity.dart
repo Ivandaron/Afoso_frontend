@@ -78,15 +78,13 @@ class SolidarityContribution {
 
 class ContributeSolidarityRequest {
   final String paymentPhone;
-  final String paymentMethod;
 
   ContributeSolidarityRequest({
     required this.paymentPhone,
-    required this.paymentMethod,
   });
 
   Map<String, dynamic> toJson() => {
     'paymentPhone': paymentPhone,
-    'paymentMethod': paymentMethod,
+    'paymentMethod': 'CAMPAY',
   };
 }

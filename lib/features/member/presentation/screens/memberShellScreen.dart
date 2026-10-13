@@ -53,82 +53,75 @@ class _MemberShellScreenState extends ConsumerState<MemberShellScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: widget.child,
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x0A000000),
-              blurRadius: 12,
-              offset: Offset(0, -4),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(28),
+              bottom: Radius.circular(22),
             ),
-          ],
-        ),
-        child: SafeArea(
-          child: SizedBox(
-            height: 62,
-            child: Row(
-              children: List.generate(_tabs.length, (i) {
-                final tab = _tabs[i];
-                final isActive = i == _currentIndex;
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -8),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: SizedBox(
+              height: 72,
+              child: Row(
+                children: List.generate(_tabs.length, (i) {
+                  final tab = _tabs[i];
+                  final isActive = i == _currentIndex;
 
-                return Expanded(
-                  child: InkWell(
-                    onTap: () => _onTap(i),
-                    splashColor: AppColors.primarySurface,
-                    highlightColor: Colors.transparent,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder:
-                                (child, anim) =>
-                                    ScaleTransition(scale: anim, child: child),
-                            child: Icon(
-                              isActive ? tab.activeIcon : tab.icon,
-                              key: ValueKey('${tab.label}_$isActive'),
-                              size: 24,
-                              color:
-                                  isActive
-                                      ? AppColors.primary
-                                      : AppColors.textHint,
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => _onTap(i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive ? AppColors.primarySurface : Colors.transparent,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              switchInCurve: Curves.easeOutBack,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(scale: animation, child: child),
+                              child: Icon(
+                                isActive ? tab.activeIcon : tab.icon,
+                                key: ValueKey('${tab.label}_$isActive'),
+                                size: 22,
+                                color: isActive ? AppColors.primary : AppColors.textHint,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            tab.label,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10.5,
-                              fontWeight:
-                                  isActive ? FontWeight.w700 : FontWeight.w400,
-                              color:
-                                  isActive
-                                      ? AppColors.primary
-                                      : AppColors.textHint,
-                              letterSpacing: 0,
+                            const SizedBox(height: 4),
+                            Text(
+                              tab.label,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                                color: isActive ? AppColors.primary : AppColors.textHint,
+                              ),
                             ),
-                          ),
-                          // Indicateur actif
-                          const SizedBox(height: 4),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: isActive ? 20 : 0,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
           ),
         ),

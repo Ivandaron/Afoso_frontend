@@ -9,27 +9,38 @@ final adminRepositoryProvider = Provider<AdminRepository>(
   (_) => AdminRepository(),
 );
 
-// ── DASHBOARD STATS ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD STATS
+// ═══════════════════════════════════════════════════════════════════════════
+
 final dashboardStatsProvider = FutureProvider.autoDispose<DashboardStats>((
   ref,
 ) {
   return ref.read(adminRepositoryProvider).getDashboardStats();
 });
 
-// ── PENDING REGISTRATIONS ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// PENDING REGISTRATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
 final pendingRegistrationsProvider =
     FutureProvider.autoDispose<List<PendingRegistration>>((ref) {
       return ref.read(adminRepositoryProvider).getPendingRegistrations();
     });
 
-// ── CLASSEMENT DÉPÔTS PAR MEMBRE ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// CLASSEMENT DÉPÔTS PAR MEMBRE
+// ═══════════════════════════════════════════════════════════════════════════
+
 final depositsSummaryProvider =
     FutureProvider.autoDispose<List<DepositsSummaryItem>>((ref) {
       return ref.read(adminRepositoryProvider).getMembersDepositsSummary();
     });
 
-// ── RÉSUMÉ FINANCIER PAR PÉRIODE ─────────────────────────────────────────────
-// Sélecteur de période prédéfinie
+// ═══════════════════════════════════════════════════════════════════════════
+// RÉSUMÉ FINANCIER PAR PÉRIODE
+// ═══════════════════════════════════════════════════════════════════════════
+
 enum PeriodPreset { thisMonth, lastMonth, last3Months, thisYear }
 
 extension PeriodPresetX on PeriodPreset {
@@ -67,7 +78,6 @@ extension PeriodPresetX on PeriodPreset {
   }
 }
 
-// State du sélecteur de période
 class PeriodState {
   final PeriodPreset preset;
   final DateTime startDate;
@@ -94,7 +104,7 @@ class PeriodNotifier extends StateNotifier<PeriodState> {
 
   void selectCustom(DateTime start, DateTime end) {
     state = PeriodState(
-      preset: PeriodPreset.thisMonth, // ignoré pour custom
+      preset: PeriodPreset.thisMonth,
       startDate: start,
       endDate: end,
     );
@@ -115,6 +125,10 @@ final periodOverviewProvider = FutureProvider.autoDispose<PeriodOverview>((
         endDate: period.endDate,
       );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN ALERT MESSAGE
+// ═══════════════════════════════════════════════════════════════════════════
 
 final adminAlertProvider = StateNotifierProvider<AdminAlertNotifier, String>(
   (ref) => AdminAlertNotifier(ref.watch(adminRepositoryProvider)),
@@ -137,7 +151,10 @@ class AdminAlertNotifier extends StateNotifier<String> {
   }
 }
 
-// ── SEND MEMBER ALERTS ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// SEND MEMBER ALERTS
+// ═══════════════════════════════════════════════════════════════════════════
+
 enum SendAlertStatus { idle, loading, success, error }
 
 class SendAlertState {
@@ -187,7 +204,10 @@ final sendAlertProvider =
       return SendAlertNotifier(ref.read(adminRepositoryProvider));
     });
 
-// ── MEMBERS SEARCH ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// MEMBERS SEARCH
+// ═══════════════════════════════════════════════════════════════════════════
+
 class MembersSearchState {
   final List<AdminMember> members;
   final bool isLoading;
@@ -252,6 +272,12 @@ class MembersSearchNotifier extends StateNotifier<MembersSearchState> {
                 'city': m.city,
                 'createdAt': m.createdAt,
                 'balance': m.balance,
+                'hasAdvancePayment': m.hasAdvancePayment,
+                'advanceMonthsCount': m.advanceMonthsCount,
+                'advanceAmount': m.advanceAmount,
+                'currentMonthPaid': m.currentMonthPaid,
+                'lastPaymentDate': m.lastPaymentDate,
+                'currentMonthStatus': m.currentMonthStatus,
               });
             }
             return m;
@@ -268,7 +294,10 @@ final membersSearchProvider = StateNotifierProvider.autoDispose<
   MembersSearchState
 >((ref) => MembersSearchNotifier(ref.read(adminRepositoryProvider)));
 
-// ── REGISTRATION ACTIONS ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTRATION ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
 enum RegistrationActionStatus { idle, loading, success, error }
 
 class RegistrationActionState {
@@ -341,7 +370,10 @@ final registrationActionProvider = StateNotifierProvider.autoDispose<
   return RegistrationActionNotifier(ref.read(adminRepositoryProvider));
 });
 
-// ── CREATE SOLIDARITY FUND ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// CREATE SOLIDARITY FUND
+// ═══════════════════════════════════════════════════════════════════════════
+
 enum CreateFundStatus { idle, loading, success, error }
 
 class CreateFundState {
@@ -380,7 +412,10 @@ final createFundProvider =
       (ref) => CreateFundNotifier(ref.read(adminRepositoryProvider)),
     );
 
-// ── MEMBER CONTRIBUTION HISTORY ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// MEMBER CONTRIBUTION HISTORY
+// ═══════════════════════════════════════════════════════════════════════════
+
 class MemberContributionHistoryState {
   final MemberContributionHistory? history;
   final bool isLoading;
@@ -433,4 +468,176 @@ final memberContributionHistoryProvider = StateNotifierProvider.autoDispose
       return MemberContributionHistoryNotifier(
         ref.read(adminRepositoryProvider),
       );
+    });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 NOUVEAU : PAIEMENTS ANTICIPÉS — STATS GLOBALES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Statistiques globales des paiements anticipés (pour le dashboard).
+final advancePaymentStatsProvider =
+    FutureProvider.autoDispose<AdvancePaymentStats>((ref) {
+      return ref.read(adminRepositoryProvider).getAdvancePaymentStats();
+    });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 NOUVEAU : LISTE PAGINÉE DES PAIEMENTS ANTICIPÉS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// État pour les filtres de la liste des paiements anticipés.
+class AdvancePaymentsFilter {
+  final int? memberId;
+  final int? year;
+  final int? month;
+  final int page;
+  final int size;
+  final String sortBy;
+  final String sortDirection;
+
+  const AdvancePaymentsFilter({
+    this.memberId,
+    this.year,
+    this.month,
+    this.page = 0,
+    this.size = 20,
+    this.sortBy = 'paymentDate',
+    this.sortDirection = 'desc',
+  });
+
+  AdvancePaymentsFilter copyWith({
+    int? memberId,
+    int? year,
+    int? month,
+    int? page,
+    int? size,
+    String? sortBy,
+    String? sortDirection,
+    bool clearMember = false,
+    bool clearYear = false,
+    bool clearMonth = false,
+  }) {
+    return AdvancePaymentsFilter(
+      memberId: clearMember ? null : (memberId ?? this.memberId),
+      year: clearYear ? null : (year ?? this.year),
+      month: clearMonth ? null : (month ?? this.month),
+      page: page ?? this.page,
+      size: size ?? this.size,
+      sortBy: sortBy ?? this.sortBy,
+      sortDirection: sortDirection ?? this.sortDirection,
+    );
+  }
+}
+
+class AdvancePaymentsFilterNotifier
+    extends StateNotifier<AdvancePaymentsFilter> {
+  AdvancePaymentsFilterNotifier() : super(const AdvancePaymentsFilter());
+
+  void setMember(int? memberId) {
+    state = state.copyWith(
+      memberId: memberId,
+      page: 0,
+      clearMember: memberId == null,
+    );
+  }
+
+  void setYear(int? year) {
+    state = state.copyWith(year: year, page: 0, clearYear: year == null);
+  }
+
+  void setMonth(int? month) {
+    state = state.copyWith(month: month, page: 0, clearMonth: month == null);
+  }
+
+  void setPage(int page) {
+    state = state.copyWith(page: page);
+  }
+
+  void setSort(String sortBy, String direction) {
+    state = state.copyWith(sortBy: sortBy, sortDirection: direction, page: 0);
+  }
+
+  void reset() => state = const AdvancePaymentsFilter();
+}
+
+final advancePaymentsFilterProvider =
+    StateNotifierProvider<AdvancePaymentsFilterNotifier, AdvancePaymentsFilter>(
+      (ref) => AdvancePaymentsFilterNotifier(),
+    );
+
+/// Liste paginée des paiements anticipés — se recharge à chaque changement de filtre.
+final advancePaymentsPageProvider =
+    FutureProvider.autoDispose<AdvancePaymentPage>((ref) {
+      final filter = ref.watch(advancePaymentsFilterProvider);
+      return ref
+          .read(adminRepositoryProvider)
+          .getAdvancePayments(
+            memberId: filter.memberId,
+            year: filter.year,
+            month: filter.month,
+            page: filter.page,
+            size: filter.size,
+            sortBy: filter.sortBy,
+            sortDirection: filter.sortDirection,
+          );
+    });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 NOUVEAU : TOP MEMBRES PAR AVANCE
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Top N des membres avec le plus de mois d'avance.
+final topAdvanceMembersProvider =
+    FutureProvider.autoDispose<List<TopAdvanceMember>>((ref) {
+      return ref.read(adminRepositoryProvider).getTopAdvanceMembers(limit: 10);
+    });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 NOUVEAU : CYCLE PARFAIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Année sélectionnée pour l'écran cycle parfait.
+final perfectCycleYearProvider = StateProvider<int>((ref) {
+  return DateTime.now().year;
+});
+
+/// Liste des membres avec cycle parfait pour l'année sélectionnée.
+final perfectCycleMembersProvider =
+    FutureProvider.autoDispose<List<PerfectCycleMember>>((ref) {
+      final year = ref.watch(perfectCycleYearProvider);
+      return ref.read(adminRepositoryProvider).getPerfectCycleMembers(year);
+    });
+
+/// Vérification du cycle parfait pour un membre spécifique.
+final memberPerfectCycleProvider = FutureProvider.autoDispose
+    .family<PerfectCycleCheck, ({int memberId, int year})>((ref, params) {
+      return ref
+          .read(adminRepositoryProvider)
+          .getMemberPerfectCycle(memberId: params.memberId, year: params.year);
+    });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 NOUVEAU : DASHBOARD COMPLET
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Dashboard complet enrichi (stats + cycle parfait + top avances).
+final fullDashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
+  ref,
+) {
+  return ref.read(adminRepositoryProvider).getFullDashboard();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 NOUVEAU : ANALYTIQUE AVANCES (graphiques)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Distribution détaillée des paiements anticipés (par année/mois).
+final advanceDistributionProvider =
+    FutureProvider.autoDispose<List<AdvanceDistributionItem>>((ref) {
+      return ref.read(adminRepositoryProvider).getAdvanceDistribution();
+    });
+
+/// Agrégats annuels des paiements anticipés.
+final advanceByYearProvider =
+    FutureProvider.autoDispose<List<AdvanceByYearItem>>((ref) {
+      return ref.read(adminRepositoryProvider).getAdvancePaymentsByYear();
     });
