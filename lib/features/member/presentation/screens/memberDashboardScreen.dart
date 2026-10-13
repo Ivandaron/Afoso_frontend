@@ -5,6 +5,7 @@ import 'package:afoso1/features/auth/presentation/providers/provider.dart';
 import 'package:afoso1/features/admin/presentation/providers/admin_provider.dart';
 import 'package:afoso1/features/member/presentation/providers/deposit_list_tile.dart';
 import 'package:afoso1/features/member/presentation/providers/member_provider.dart';
+import 'package:afoso1/features/member/presentation/widgets/situation_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,35 +61,60 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
           slivers: [
             // ── App Bar ──────────────────────────────────────────────────────
             SliverAppBar(
-              expandedHeight: 160,
+              expandedHeight: 128,
               pinned: true,
               backgroundColor: AppColors.white,
               surfaceTintColor: Colors.transparent,
+              automaticallyImplyLeading: false,
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   decoration: const BoxDecoration(
-                    gradient: AppColors.brandGradient,
+                    gradient: AppColors.primaryGradient,
                   ),
-                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 52, 20, 14),
                   child: FadeInDown(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          '${_greeting()}, 👋',
-                          style: GoogleFonts.dmSans(
-                            color: Colors.white.withOpacity(0.85),
-                            fontSize: 14,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${_greeting()}, 👋',
+                                style: GoogleFonts.dmSans(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _userName,
+                                style: GoogleFonts.dmSans(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _userName,
-                          style: GoogleFonts.dmSans(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          ),
+                          child: Text(
+                            'Membre actif',
+                            style: GoogleFonts.dmSans(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -97,25 +123,28 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
                 ),
               ),
               actions: [
-                IconButton(
-                  onPressed: () async {
-                    await ref.read(authProvider.notifier).logout();
-                    if (context.mounted) {
-                      context.go('/login');
-                    }
-                  },
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    color: AppColors.textSecondary,
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    onPressed: () async {
+                      await ref.read(authProvider.notifier).logout();
+                      if (context.mounted) {
+                        context.go('/login');
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white,
+                    ),
+                    tooltip: 'Déconnexion',
                   ),
-                  tooltip: 'Déconnexion',
                 ),
               ],
             ),
 
             // ── Contenu ───────────────────────────────────────────────────────
             SliverPadding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // ── Résumé financier ──────────────────────────────────────
@@ -130,6 +159,12 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
                         (summary) =>
                             FadeInUp(child: _SummaryCard(summary: summary)),
                   ),
+                  const SizedBox(height: 16),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 50),
+                    child: const SituationBanner(),
+                  ),
+                  const SizedBox(height: 20),
                   const SizedBox(height: 20),
                   // ── Message d’alerte admin ──────────────────────────────────────────────
                   if (adminAlert.isNotEmpty)
@@ -295,62 +330,101 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1D4ED8), Color(0xFF7C3AED)],
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withOpacity(0.25),
             blurRadius: 20,
-            offset: const Offset(0, 8),
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Épargne totale',
-            style: GoogleFonts.dmSans(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 13,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Épargne totale',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.trending_up_rounded, size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      summary.progression,
+                      style: GoogleFonts.dmSans(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             '${_formatAmount(summary.totalSaved)} FCFA',
             style: GoogleFonts.dmSans(
               color: Colors.white,
-              fontSize: 32,
+              fontSize: 30,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+              letterSpacing: -0.8,
             ),
           ),
-          const SizedBox(height: 20),
-          const Divider(color: Colors.white24, height: 1),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryMiniStat(
-                  label: 'Ce mois',
-                  value: '${_formatAmount(summary.currentMonth.total)} F',
-                  sub: '${summary.currentMonth.depositCount} dépôts',
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _SummaryMiniStat(
+                    label: 'Ce mois',
+                    value: '${_formatAmount(summary.currentMonth.total)} F',
+                    sub: '${summary.currentMonth.depositCount} dépôts',
+                    isLight: true,
+                  ),
                 ),
-              ),
-              Container(width: 1, height: 40, color: Colors.white24),
-              Expanded(
-                child: _SummaryMiniStat(
-                  label: 'Mois dernier',
-                  value: '${_formatAmount(summary.previousMonth.total)} F',
-                  sub: summary.progression,
-                  subColor:
-                      summary.progression.startsWith('-')
-                          ? Colors.redAccent
-                          : Colors.greenAccent,
+                Container(width: 1, height: 42, color: Colors.white24),
+                Expanded(
+                  child: _SummaryMiniStat(
+                    label: 'Précédent',
+                    value: '${_formatAmount(summary.previousMonth.total)} F',
+                    sub: summary.progression,
+                    subColor: summary.progression.startsWith('-')
+                        ? Colors.white70
+                        : Colors.greenAccent,
+                    isLight: true,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -369,34 +443,37 @@ class _SummaryMiniStat extends StatelessWidget {
   final String value;
   final String? sub;
   final Color? subColor;
+  final bool isLight;
 
   const _SummaryMiniStat({
     required this.label,
     required this.value,
     this.sub,
     this.subColor,
+    this.isLight = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: GoogleFonts.dmSans(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 12,
+              color: isLight ? Colors.white.withOpacity(0.78) : AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: GoogleFonts.dmSans(
-              color: Colors.white,
-              fontSize: 16,
+              color: isLight ? Colors.white : AppColors.textPrimary,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -404,8 +481,9 @@ class _SummaryMiniStat extends StatelessWidget {
             Text(
               sub!,
               style: GoogleFonts.dmSans(
-                color: subColor ?? Colors.white70,
-                fontSize: 11,
+                color: subColor ?? (isLight ? Colors.white70 : AppColors.textSecondary),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
               ),
             ),
         ],

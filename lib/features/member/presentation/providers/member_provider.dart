@@ -24,12 +24,12 @@ final myDepositsProvider = FutureProvider.autoDispose<List<Deposit>>((
   return ref.read(memberRepositoryProvider).getMyDeposits();
 });
 
-// ── DEPOSIT FORM STATE (pour paiement unifié) ────────────────────────────────
+// ── DEPOSIT FORM STATE (multi-mois) ─────────────────────────────────────────
 enum DepositFormStatus { idle, loading, success, error }
 
 class DepositFormState {
   final DepositFormStatus status;
-  final MultipleDepositTransaction? transaction;
+  final MultiMonthDepositTransaction? transaction;
   final String? error;
 
   const DepositFormState({
@@ -40,7 +40,7 @@ class DepositFormState {
 
   DepositFormState copyWith({
     DepositFormStatus? status,
-    MultipleDepositTransaction? transaction,
+    MultiMonthDepositTransaction? transaction,
     String? error,
   }) => DepositFormState(
     status: status ?? this.status,
@@ -53,10 +53,10 @@ class DepositFormNotifier extends StateNotifier<DepositFormState> {
   final MemberRepository _repo;
   DepositFormNotifier(this._repo) : super(const DepositFormState());
 
-  Future<void> initiateDeposit(UnifiedDepositRequest req) async {
+  Future<void> initiateDeposit(MultiMonthDepositRequest req) async {
     state = state.copyWith(status: DepositFormStatus.loading, error: null);
     try {
-      final tx = await _repo.initiateUnifiedDeposit(req);
+      final tx = await _repo.initiateMultiMonthDeposit(req);
       state = state.copyWith(
         status: DepositFormStatus.success,
         transaction: tx,
@@ -64,7 +64,10 @@ class DepositFormNotifier extends StateNotifier<DepositFormState> {
     } catch (e) {
       state = state.copyWith(
         status: DepositFormStatus.error,
-        error: e.toString().replaceAll('Exception: ', ''),
+        error: e
+            .toString()
+            .replaceAll('Exception: ', '')
+            .replaceAll('ApiException: ', ''),
       );
     }
   }
@@ -72,9 +75,12 @@ class DepositFormNotifier extends StateNotifier<DepositFormState> {
   void reset() => state = const DepositFormState();
 }
 
-final depositFormProvider = StateNotifierProvider.autoDispose<DepositFormNotifier, DepositFormState>((ref) {
-  return DepositFormNotifier(ref.read(memberRepositoryProvider));
-});
+final depositFormProvider =
+    StateNotifierProvider.autoDispose<DepositFormNotifier, DepositFormState>((
+      ref,
+    ) {
+      return DepositFormNotifier(ref.read(memberRepositoryProvider));
+    });
 
 // Provider pour les mois à payer (helper)
 final monthsToPayProvider = Provider<List<String>>((ref) {
@@ -88,8 +94,19 @@ final monthsToPayProvider = Provider<List<String>>((ref) {
 });
 
 const _monthNames = [
-  '', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  '',
+  'Janvier',
+  'Février',
+  'Mars',
+  'Avril',
+  'Mai',
+  'Juin',
+  'Juillet',
+  'Août',
+  'Septembre',
+  'Octobre',
+  'Novembre',
+  'Décembre',
 ];
 
 // ── ACTIVE SOLIDARITY FUND ────────────────────────────────────────────────────
@@ -181,3 +198,20 @@ final memberUnreadAlertsProvider =
         return [];
       }
     });
+
+final depositCalendarYearProvider = StateProvider<int>((ref) {
+  return DateTime.now().year;
+});
+
+final depositCalendarProvider = FutureProvider.autoDispose<DepositCalendar>((
+  ref,
+) async {
+  final year = ref.watch(depositCalendarYearProvider);
+  return ref.read(memberRepositoryProvider).getDepositCalendar(year: year);
+});
+
+final memberSituationProvider = FutureProvider.autoDispose<MemberSituation>((
+  ref,
+) async {
+  return ref.read(memberRepositoryProvider).getMemberSituation();
+});

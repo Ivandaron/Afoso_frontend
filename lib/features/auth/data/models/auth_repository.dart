@@ -16,37 +16,41 @@ class AuthRepository {
     required String phone,
     required String password,
   }) async {
-    final response = await _api.post(
-      ApiEndpoints.login,
-      data: LoginRequest(phone: phone, password: password).toJson(),
-    );
-
-    final apiResponse = ApiResponse.fromJson(
-      response.data as Map<String, dynamic>,
-      (data) => AuthResponse.fromJson(data as Map<String, dynamic>),
-    );
-
-    if (!apiResponse.isSuccess || apiResponse.data == null) {
-      throw ApiException(
-        message: apiResponse.errorMessage,
-        statusCode: response.statusCode,
+    try {
+      final response = await _api.post(
+        ApiEndpoints.login,
+        data: LoginRequest(phone: phone, password: password).toJson(),
       );
+
+      final apiResponse = ApiResponse.fromJson(
+        response.data as Map<String, dynamic>,
+        (data) => AuthResponse.fromJson(data as Map<String, dynamic>),
+      );
+
+      if (!apiResponse.isSuccess || apiResponse.data == null) {
+        throw ApiException(
+          message: apiResponse.errorMessage ?? 'Identifiants incorrects',
+          statusCode: response.statusCode ?? 401,
+        );
+      }
+
+      final authData = apiResponse.data!;
+
+      await SecureStorageService.saveToken(authData.token);
+      ApiClient.setToken(authData.token);
+      await SecureStorageService.saveUserInfo(
+        role: authData.role,
+        userId: authData.memberId?.toString() ?? '',
+        name: authData.fullName ?? '',
+        phone: authData.phone ?? phone,
+      );
+
+      return authData;
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw ApiException(message: e.toString(), statusCode: 0);
     }
-
-    final authData = apiResponse.data!;
-
-    // Sauvegarder token + infos utilisateur
-    await SecureStorageService.saveToken(authData.token);
-    // Mettre en cache mémoire immédiatement pour éviter tout délai de lecture
-    ApiClient.setToken(authData.token);
-    await SecureStorageService.saveUserInfo(
-      role: authData.role,
-      userId: authData.memberId?.toString() ?? '',
-      name: authData.fullName ?? '',
-      phone: authData.phone ?? phone,
-    );
-
-    return authData;
   }
 
   /// 📝 Inscription — POST /registration/submit

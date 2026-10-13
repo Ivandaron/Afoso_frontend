@@ -1,4 +1,4 @@
-import 'package:afoso1/features/admin/presentation/screens/adminDashboardScreen.dart';
+import 'package:afoso1/features/admin/presentation/screens/admin_dashboard_screen.dart';
 import 'package:afoso1/features/admin/presentation/screens/adminShellScreen.dart';
 import 'package:afoso1/features/admin/presentation/screens/admin_settings_screen.dart';
 import 'package:afoso1/features/admin/presentation/screens/admin_member_screen.dart';

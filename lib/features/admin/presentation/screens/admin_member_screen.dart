@@ -291,6 +291,21 @@ class _MemberCardState extends State<_MemberCard> {
     }
   }
 
+  String _formatRelativeDate(String? raw) {
+    if (raw == null || raw.isEmpty) return 'Jamais';
+    try {
+      final date = DateTime.parse(raw);
+      final diff = DateTime.now().difference(date);
+      if (diff.inDays == 0) return 'Aujourd’hui';
+      if (diff.inDays == 1) return 'Hier';
+      if (diff.inDays < 30) return 'Il y a ${diff.inDays} jours';
+      if (diff.inDays < 60) return 'Il y a ${diff.inDays ~/ 7} semaines';
+      return 'Il y a ${diff.inDays ~/ 30} mois';
+    } catch (_) {
+      return 'Jamais';
+    }
+  }
+
   String _fmtBalance(double v) {
     if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
     if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}K';
@@ -320,7 +335,6 @@ class _MemberCardState extends State<_MemberCard> {
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  // Avatar
                   CircleAvatar(
                     radius: 22,
                     backgroundColor:
@@ -340,13 +354,54 @@ class _MemberCardState extends State<_MemberCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          m.fullName,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                m.fullName,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (m.hasAdvancePayment) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF7C3AED,
+                                  ).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.rocket_launch_rounded,
+                                      size: 10,
+                                      color: Color(0xFF7C3AED),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '+${m.advanceMonthsCount}m',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF7C3AED),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Row(
@@ -382,7 +437,6 @@ class _MemberCardState extends State<_MemberCard> {
                             ],
                           ],
                         ),
-                        // ── Solde visible directement ──────────────────────
                         const SizedBox(height: 5),
                         Row(
                           children: [
@@ -405,12 +459,31 @@ class _MemberCardState extends State<_MemberCard> {
                                         : AppColors.textHint,
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            _MonthStatusDot(status: m.currentMonthStatus),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 12,
+                              color: AppColors.textHint,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Dernier paiement : ${_formatRelativeDate(m.lastPaymentDate)}',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  // Status + expand
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -436,15 +509,12 @@ class _MemberCardState extends State<_MemberCard> {
               ),
             ),
           ),
-
-          // ── Détails expandables ────────────────────────────────────────────
           if (_isExpanded) ...[
             const Divider(color: AppColors.border, height: 1),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Infos
                   Row(
                     children: [
                       Expanded(
@@ -518,8 +588,6 @@ class _MemberCardState extends State<_MemberCard> {
                   ),
 
                   const SizedBox(height: 16),
-
-                  // Toggle actif / inactif
                   if (_toggling)
                     const Center(
                       child: CircularProgressIndicator(
@@ -672,6 +740,61 @@ class _DetailRow extends StatelessWidget {
               color: valueColor ?? AppColors.textPrimary,
             ),
             overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthStatusDot extends StatelessWidget {
+  final String status;
+
+  const _MonthStatusDot({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String label;
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+      case 'PAID':
+        color = AppColors.success;
+        label = 'Payé';
+        break;
+      case 'PENDING':
+        color = AppColors.warning;
+        label = 'En attente';
+        break;
+      case 'PARTIAL':
+        color = AppColors.warning;
+        label = 'Partiel';
+        break;
+      case 'OVERDUE':
+        color = AppColors.danger;
+        label = 'En retard';
+        break;
+      case 'NOT_PAID':
+      default:
+        color = AppColors.textHint;
+        label = 'Non payé';
+        break;
+    }
+
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: color,
           ),
         ),
       ],

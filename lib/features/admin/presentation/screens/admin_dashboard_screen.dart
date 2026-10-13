@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../providers/admin_provider.dart';
 import 'admin_deposits_summary_screen.dart';
+import 'advance_payments_summary_card.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -38,20 +39,21 @@ class AdminDashboardScreen extends ConsumerWidget {
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Déconnexion'),
-                  content: const Text('Voulez-vous vous déconnecter ?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Annuler'),
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text('Déconnexion'),
+                      content: const Text('Voulez-vous vous déconnecter ?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Annuler'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Se déconnecter'),
+                        ),
+                      ],
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Se déconnecter'),
-                    ),
-                  ],
-                ),
               );
 
               if (confirm == true) {
@@ -171,6 +173,11 @@ class AdminDashboardScreen extends ConsumerWidget {
               ),
 
               const SizedBox(height: 24),
+
+              FadeInUp(
+                delay: const Duration(milliseconds: 150),
+                child: const AdvancePaymentsSummaryCard(),
+              ),
 
               // ── Cagnotte solidaire ────────────────────────────────────────
               FadeInUp(
@@ -387,7 +394,6 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Montant réel des frais d'inscription depuis /registration-fees/total
     final registrationRevenue = stats.totalRegistrationFees;
 
     final cards = [
@@ -409,7 +415,7 @@ class _StatsGrid extends StatelessWidget {
         'Revenus\ninscriptions',
         '${_fmt(registrationRevenue)} FCFA',
         Icons.how_to_reg_rounded,
-        const Color(0xFF7C3AED), // violet
+        const Color(0xFF7C3AED),
         null,
       ),
       _StatData(
@@ -428,27 +434,21 @@ class _StatsGrid extends StatelessWidget {
       ),
     ];
 
-    return Column(
-      children: [
-        // Ligne 1 : 2 grandes stats (épargne + membres)
-        Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth >= 700 ? 3 : 2;
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: constraints.maxWidth >= 700 ? 1.55 : 1.3,
           children: [
-            Expanded(child: _StatCard(data: cards[0])),
-            const SizedBox(width: 12),
-            Expanded(child: _StatCard(data: cards[1])),
+            for (final card in cards) _StatCard(data: card, compact: crossAxisCount > 2),
           ],
-        ),
-        const SizedBox(height: 12),
-        // Ligne 2 : 3 stats (revenus inscriptions, en attente, échecs)
-        Row(
-          children: [
-            for (int i = 2; i < cards.length; i++) ...[
-              if (i > 2) const SizedBox(width: 8),
-              Expanded(child: _StatCard(data: cards[i], compact: true)),
-            ],
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 }

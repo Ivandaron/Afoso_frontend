@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStorageService {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  static final FlutterSecureStorage _storage =
+      kIsWeb
+          ? const FlutterSecureStorage()
+          : const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+          );
 
   static const _keyToken = 'afoso_jwt_token';
   static const _keyRole = 'afoso_user_role';
@@ -44,8 +48,7 @@ class SecureStorageService {
 
   static Future<void> saveAdminTerms(String value) =>
       _storage.write(key: _keyAdminTerms, value: value);
-  static Future<String?> getAdminTerms() =>
-      _storage.read(key: _keyAdminTerms);
+  static Future<String?> getAdminTerms() => _storage.read(key: _keyAdminTerms);
 
   static Future<void> saveAdminPolicy(String value) =>
       _storage.write(key: _keyAdminPolicy, value: value);

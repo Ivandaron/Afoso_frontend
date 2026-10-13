@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:afoso1/core/constants/app_colors.dart';
 import 'package:afoso1/core/storage/secure_storage.dart';
+import 'package:afoso1/features/admin/presentation/providers/admin_provider.dart';
 import 'package:afoso1/features/auth/presentation/providers/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +24,7 @@ class AdminShellScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
-  final String _adminName = 'Admin';
+  String _adminName = 'Admin';
 
   static const _tabs = [
     _Tab(
@@ -64,11 +65,31 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadAdminName();
+  }
+
+  Future<void> _loadAdminName() async {
+    final name = await SecureStorageService.getUserName();
+    if (!mounted) return;
+    setState(() {
+      if (name != null && name.trim().isNotEmpty) {
+        _adminName = name.trim();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final activeIndex = _tabs.indexWhere(
       (tab) => widget.currentLocation.startsWith(tab.path),
     );
     final currentIndex = activeIndex >= 0 ? activeIndex : 0;
+    final pendingCount = ref.watch(pendingRegistrationsProvider).maybeWhen(
+      data: (items) => items.length,
+      orElse: () => 0,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -77,7 +98,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
             backgroundColor: AppColors.background,
             body: Row(
               children: [
-                _buildSideRail(currentIndex),
+                _buildSideRail(currentIndex, pendingCount),
                 Expanded(child: widget.child),
               ],
             ),
@@ -87,7 +108,7 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
         return Scaffold(
           backgroundColor: AppColors.background,
           body: widget.child,
-          bottomNavigationBar: _buildBottomNav(currentIndex),
+          bottomNavigationBar: _buildBottomNav(currentIndex, pendingCount),
         );
       },
     );
@@ -99,17 +120,15 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
     }
   }
 
-  // ── SIDE RAIL (desktop/tablet) ─────────────────────────────────────────────
-  Widget _buildSideRail(int activeIndex) {
+  Widget _buildSideRail(int activeIndex, int pendingCount) {
     return Container(
       width: 230,
       color: AppColors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 56, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
             child: Row(
               children: [
                 Container(
@@ -126,37 +145,39 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AFOSO',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AFOSO',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Administration',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
+                      Text(
+                        'Administration',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
           const Divider(color: AppColors.border, height: 1),
           const SizedBox(height: 12),
-
-          // Nav items
           ...List.generate(_tabs.length, (i) {
-            final t = _tabs[i];
+            final tab = _tabs[i];
             final active = i == activeIndex;
+            final showBadge = i == 1 && pendingCount > 0;
+
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
               child: InkWell(
@@ -164,37 +185,54 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color:
-                        active ? AppColors.primarySurface : Colors.transparent,
+                    color: active ? AppColors.primarySurface : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        active ? t.activeIcon : t.icon,
-                        size: 20,
-                        color:
-                            active
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
+                            active ? tab.activeIcon : tab.icon,
+                            size: 20,
+                            color: active ? AppColors.primary : AppColors.textSecondary,
+                          ),
+                          if (showBadge)
+                            Positioned(
+                              right: -6,
+                              top: -6,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.danger,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    pendingCount > 9 ? '9+' : pendingCount.toString(),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          t.label,
+                          tab.label,
                           style: GoogleFonts.dmSans(
                             fontSize: 14,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w400,
-                            color:
-                                active
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                            color: active ? AppColors.primary : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -213,13 +251,10 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
               ),
             );
           }),
-
           const Spacer(),
           const Divider(color: AppColors.border, height: 1),
-
-          // Profil admin
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             child: Row(
               children: [
                 CircleAvatar(
@@ -236,26 +271,14 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _adminName,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Administrateur',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    _adminName,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
@@ -282,62 +305,84 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
     );
   }
 
-  // ── BOTTOM NAV (mobile) ───────────────────────────────────────────────────
-  Widget _buildBottomNav(int activeIndex) {
+  Widget _buildBottomNav(int activeIndex, int pendingCount) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
+        border: const Border(top: BorderSide(color: AppColors.border)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 12,
-            offset: Offset(0, -4),
+            color: AppColors.primary.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: SafeArea(
-        child: SizedBox(
-          height: 62,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: Row(
             children: List.generate(_tabs.length, (i) {
-              final t = _tabs[i];
+              final tab = _tabs[i];
               final active = i == activeIndex;
+              final showBadge = i == 1 && pendingCount > 0;
+
               return Expanded(
-                child: InkWell(
+                child: GestureDetector(
                   onTap: () => _navigate(i),
-                  splashColor: AppColors.primarySurface,
-                  highlightColor: Colors.transparent,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        active ? t.activeIcon : t.icon,
-                        size: 22,
-                        color: active ? AppColors.primary : AppColors.textHint,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        t.shortLabel,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight:
-                              active ? FontWeight.w700 : FontWeight.w400,
-                          color:
-                              active ? AppColors.primary : AppColors.textHint,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: active ? AppColors.primarySurface : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              active ? tab.activeIcon : tab.icon,
+                              color: active ? AppColors.primary : AppColors.textHint,
+                              size: 22,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tab.shortLabel,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                color: active ? AppColors.primary : AppColors.textHint,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: active ? 16 : 0,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ],
+                        if (showBadge)
+                          Positioned(
+                            right: 18,
+                            top: 0,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: const BoxDecoration(
+                                color: AppColors.danger,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  pendingCount > 9 ? '9+' : pendingCount.toString(),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               );

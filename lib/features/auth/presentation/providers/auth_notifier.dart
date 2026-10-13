@@ -1,4 +1,5 @@
 import 'package:afoso1/core/storage/secure_storage.dart';
+import 'package:afoso1/core/utils/error_mapper.dart';
 import 'package:afoso1/features/auth/data/models/auth_repository.dart';
 import 'package:afoso1/features/auth/presentation/providers/auth_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +53,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         status: AuthStatus.unauthenticated,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: ErrorMapper.toUserMessage(e),
       );
       return false;
     }

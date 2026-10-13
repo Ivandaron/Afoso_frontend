@@ -54,14 +54,23 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Mon profil'),
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        title: Text(
+          'Mon profil',
+          style: GoogleFonts.dmSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
         actions: [
           IconButton(
             onPressed: () {
               ref.invalidate(_userProfileProvider);
               ref.invalidate(_accountStatsProvider);
             },
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
             tooltip: 'Actualiser',
           ),
         ],
@@ -236,33 +245,36 @@ class _ProfileCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1D4ED8), Color(0xFF7C3AED)],
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppColors.primary.withOpacity(0.22),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Avatar
           Container(
-            width: 80,
-            height: 80,
+            width: 82,
+            height: 82,
             decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(40),
+              color: Colors.white.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(42),
+              border: Border.all(color: Colors.white.withOpacity(0.25)),
             ),
             child: Center(
               child: Text(
                 initial,
                 style: GoogleFonts.dmSans(
                   fontSize: 32,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
@@ -272,43 +284,53 @@ class _ProfileCard extends StatelessWidget {
           Text(
             name,
             style: GoogleFonts.dmSans(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
             ),
           ),
           if (matricule.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
               child: Text(
                 'Matricule : $matricule',
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ),
           ],
           const SizedBox(height: 16),
-          const Divider(color: AppColors.border),
-          const SizedBox(height: 12),
-          // Infos
-          if (phone.isNotEmpty)
-            _InfoRow(icon: Icons.phone_outlined, value: phone),
-          if (email.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _InfoRow(icon: Icons.email_outlined, value: email),
-          ],
-          if (status.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _StatusChip(status: status),
-          ],
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+            ),
+            child: Column(
+              children: [
+                if (phone.isNotEmpty) ...[
+                  _InfoRow(icon: Icons.phone_outlined, value: phone, light: true),
+                  if (email.isNotEmpty || status.isNotEmpty) const SizedBox(height: 8),
+                ],
+                if (email.isNotEmpty) ...[
+                  _InfoRow(icon: Icons.email_outlined, value: email, light: true),
+                  if (status.isNotEmpty) const SizedBox(height: 8),
+                ],
+                if (status.isNotEmpty)
+                  _StatusChip(status: status, light: true),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -318,20 +340,21 @@ class _ProfileCard extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String value;
-  const _InfoRow({required this.icon, required this.value});
+  final bool light;
+  const _InfoRow({required this.icon, required this.value, this.light = false});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 16, color: AppColors.textHint),
+        Icon(icon, size: 16, color: light ? Colors.white70 : AppColors.textHint),
         const SizedBox(width: 8),
         Text(
           value,
           style: GoogleFonts.dmSans(
             fontSize: 14,
-            color: AppColors.textSecondary,
+            color: light ? Colors.white : AppColors.textSecondary,
           ),
         ),
       ],
@@ -341,7 +364,8 @@ class _InfoRow extends StatelessWidget {
 
 class _StatusChip extends StatelessWidget {
   final String status;
-  const _StatusChip({required this.status});
+  final bool light;
+  const _StatusChip({required this.status, this.light = false});
 
   @override
   Widget build(BuildContext context) {
@@ -367,15 +391,16 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: light ? Colors.white.withOpacity(0.12) : color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
+        border: light ? Border.all(color: Colors.white.withOpacity(0.15)) : null,
       ),
       child: Text(
         label,
         style: GoogleFonts.dmSans(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: color,
+          color: light ? Colors.white : color,
         ),
       ),
     );
@@ -404,7 +429,7 @@ class _AccountStatsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _StatBox(
-            label: 'Total épargne',
+            label: 'Épargne',
             value: '${_fmt(totalDeposits)} F',
             color: AppColors.success,
           ),
@@ -412,7 +437,7 @@ class _AccountStatsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _StatBox(
-            label: 'Transactions',
+            label: 'Ops',
             value: '$txCount',
             color: AppColors.warning,
           ),
